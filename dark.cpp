@@ -17,7 +17,7 @@ inline unsigned int clip(int value, int min, int max) {
 
 int main(int argc, char** argv)
 {
-	FILE* fp, *darkFP;;
+	FILE* fp, *darkFP;
 	ubyte16* inimg, * outimg;
 	int width = 1628, height = 1628;
 
@@ -25,7 +25,7 @@ int main(int argc, char** argv)
 	long handle;
 	int result = 1;
 
-	if ((fp = fopen(argv[1], "rb")) == NULL) {
+	if ((fp = fopen("./S1/MTF_V.raw", "rb")) == NULL) {
 		fprintf(stderr, "please input usage : input.raw");
 		return -1;
 	}
@@ -40,9 +40,9 @@ int main(int argc, char** argv)
 
 	fclose(fp);
 	// 폴더 내 raw 파일 모두 읽어오기
-	std::string path = "./Dark/";
+	std::string path = "./S1/Dark/";
 
-	handle = _findfirst("./Dark/*.raw", &fd);
+	handle = _findfirst("./S1/Dark/*.raw", &fd);
 	if (handle == -1) return -1;
 	while (result != -1)
 	{
@@ -73,6 +73,16 @@ int main(int argc, char** argv)
 		result = _findnext(handle, &fd);
 	}
 	_findclose(handle);
+
+	// dark 평균값 raw 파일 저장
+	for (int i = 0; i < imgSize; i++) {
+		rawimg[i] /= 101;
+	}
+
+	fp = fopen("./S1/avgDark.raw", "wb");
+	fwrite(rawimg, sizeof(ubyte16), imgSize, fp);
+
+	fclose(fp);
 	 
 	//'원본 gray value - 평균값' 적용 후 새로운 raw 파일로 저장
 	outimg = (ubyte16*)malloc((sizeof(ubyte16) * imgSize));
@@ -80,15 +90,14 @@ int main(int argc, char** argv)
 
 		for (int i = 0; i < imgSize; i++) {
 
-			if (inimg[i] > rawimg[i] / 101)
-				outimg[i] = inimg[i] - (rawimg[i] / 101);
+			if (inimg[i] > rawimg[i])
+				outimg[i] = inimg[i] - (rawimg[i]);
 
-			else if (inimg[i] < rawimg[i] / 101)
-				outimg[i] = abs(inimg[i] - (rawimg[i] / 101));
+			else if (inimg[i] < rawimg[i])
+				outimg[i] = abs(inimg[i] - (rawimg[i]));
 		}
 
-
-	if ((fp = fopen(argv[2], "wb")) == NULL) {
+	if ((fp = fopen("./S1/DARK_MTF_V.raw", "wb")) == NULL) {
 		fprintf(stderr, "cannot open this file");
 		return -1;
 	}
