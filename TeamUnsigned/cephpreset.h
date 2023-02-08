@@ -15,15 +15,15 @@ private slots:
     void receiveFile(QPixmap&);
 
 signals:
-    void panoPresetSend(QPixmap&);
-    void panoPresetAdj(QPixmap&);
+    void cephPresetSend(QPixmap&);
+    void cephPresetAdj(QPixmap&);
 
 private:
-    QImage defaultImg, image, prevImg;
+    QImage defaultImg, image;
     QImage presetImg;
 
     QPixmap pixmap;
-    unsigned short * inimg, *mask, *outimg ,*sharpenImg, *copyImg;
+    quint8 * inimg, *mask, *outimg ,*copyImg, *copyImg2;
 
 
     int width, height, imageSize;
@@ -38,10 +38,12 @@ private:
     void setPreset_5();
     void setPreset_6();
 
-    void gaussian(float);
     void set3x3MaskValue();
-    void highBoost(int);
-    void ADFilter(unsigned short* ,int);
+
+    quint8* gaussian(float);
+    quint8* highBoost(int);
+    quint8* highBoost(quint8*, int);
+    quint8* ADFilter(quint8* ,int);
 
 };
 

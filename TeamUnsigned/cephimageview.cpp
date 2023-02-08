@@ -4,6 +4,8 @@
 #include <QFile>
 #include <QFileDialog>
 
+typedef quint8 ubyte8;
+
 CephImageView::CephImageView(QWidget *parent)
     : QWidget{parent}
 {

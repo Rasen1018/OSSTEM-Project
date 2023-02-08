@@ -11,10 +11,7 @@
 
 #define LIMIT_UBYTE(n) (n > UCHAR_MAX) ? UCHAR_MAX : (n < 0) ? 0 : n
 
-unsigned char clip(int value, int min, int max)
-{
-    return(value > max? max : value < min? min : value);
-}
+typedef quint8 ubyte8;
 
 PanoramaForm::PanoramaForm(QWidget *parent) :
     QWidget(parent),
@@ -22,10 +19,19 @@ PanoramaForm::PanoramaForm(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    imageWidth = 1125 ,imageHeight = 611;
-
     dentalImageView = new DentalImageView;
     dentalImageView->setFixedSize(1020, 655);
+
+    /* 필터 버튼 시그널 추가 */
+    filterWidget = new FilterButtonForm;
+
+    connect(filterWidget, SIGNAL(panoLowPassCutOff(int)),
+            this, SLOT(sendFourierSignal(int)));
+    connect(filterWidget, SIGNAL(panoHighPassCutOff(int)),
+            this, SLOT(send2FourierSignal(int)));
+    connect(filterWidget, SIGNAL(sendPanoMedian(int)),
+            this, SLOT(sendMedianSignal(int)));
+    /***************************************************/
 
     //dentalImageView->setStyleSheet("border: 1px solid rgb(184,191,200);");
 
@@ -395,7 +401,8 @@ void PanoramaForm::on_imageSaveButton_clicked()
 
 void PanoramaForm::on_filePushButton_clicked()
 {
-    QString filename = QFileDialog::getOpenFileName(this, "Open file", "C:\\Users\\KOSA\\OneDrive\\바탕 화면");
+    QString filename = QFileDialog::getOpenFileName(this, "Open file",
+                                                    "C:\\Users\\KOSA\\OneDrive\\바탕 화면\\PostData");
 
     QPixmap pixmap;
 
@@ -413,10 +420,13 @@ void PanoramaForm::on_filePushButton_clicked()
             memcpy( data, byteArray.data(), byteArray.size() );
 
             QImage image; //declare variables on header file
-            QImage *temp = new QImage(data, 3000, 2400,QImage::Format_Grayscale16);
+
+            QImage *temp = new QImage(data, 3000, 1628,QImage::Format_Grayscale16);
+
             image = *temp;
 
             pixmap = QPixmap::fromImage(image,Qt::AutoColor);
+
         }
         else if( extension != "raw"){
             pixmap.load(file->fileName());
@@ -478,14 +488,24 @@ void PanoramaForm::panoImageSave(QImage& saveimg)
     }
     else {
         QString filename = QFileDialog::getSaveFileName(this, "Select a file to save", ".",
-                                                        "Image File(*.jpg *.bmp *.raw *.png)");
+                                                        "Image File(*.raw)");
         QFile * file = new QFile(filename);
         file->open(QIODevice::WriteOnly | QIODevice::Text);
         QFileInfo fileInfo(filename);
 
-        if(fileInfo.isWritable()) {
+        QByteArray byteArray = filename.toLocal8Bit();
+        const char *saveFileName = byteArray.data();
 
-            saveimg.save(filename);
+        if(fileInfo.isWritable()){
+            FILE* fp;
+
+            fp = fopen(saveFileName, "wb");
+            QImage image = saveimg.convertToFormat(QImage::Format_Grayscale16);
+            ushort* saveFile = reinterpret_cast<ushort*>(image.bits());
+
+            fwrite(saveFile, sizeof(unsigned short) * saveimg.width() * saveimg.height(), 1, fp);
+
+            fclose(fp);
         }
         else {
             QMessageBox::warning(this, "Error", "Can't Save this file", QMessageBox::Ok);
@@ -511,5 +531,26 @@ void PanoramaForm::on_hePushButton_clicked()
 }
 
 
+void PanoramaForm::on_filterPushButton_clicked()
+{
+    if (filterWidget->getTitle() == "Cephalo")
+        filterWidget->exit();
 
+    filterWidget->setTitle("Panorama");
+    filterWidget->show();
+}
 
+/******************** 시그널/ 슬롯 추가 **********************/
+void PanoramaForm::sendFourierSignal(int cutoff) {
+
+    emit sendCutOffValue(cutoff);
+}
+
+void PanoramaForm::send2FourierSignal(int cutoff) {
+    emit send2CutOffValue(cutoff);
+}
+
+void PanoramaForm::sendMedianSignal(int value) {
+
+    emit sendMedianValue(value);
+}

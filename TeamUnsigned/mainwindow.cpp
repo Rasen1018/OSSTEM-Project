@@ -92,9 +92,30 @@ MainWindow::MainWindow(QWidget *parent)
             cephPreset, SLOT(receiveFile(QPixmap&)));
     connect(cephaloForm, SIGNAL(sendCephPreset(int)),
             cephPreset, SLOT(receievePreset(int)));
-    connect(cephPreset, SIGNAL(panoPresetSend(QPixmap&)),
+    connect(cephPreset, SIGNAL(cephPresetSend(QPixmap&)),
             cephaloForm, SLOT(receieveImg(QPixmap&)));
 
+    /* preset 연산을 위한 이미지 설정 변경 SIGNAL/SLOT  */
+    connect(cephPreset, SIGNAL(cephPresetAdj(QPixmap&)),
+            cephValueAdjustment, SLOT(receiveSetPresetImg(QPixmap&)));
+    /* preset_ Reset  SIGNAL/SLOT*/
+    connect(cephaloForm, SIGNAL(sendSetReset()),
+            cephValueAdjustment, SLOT(setResetImg()));
+
+    /*******************필터 버튼 값 전달 추가******************/
+    connect(cephaloForm, SIGNAL(sendCutOffValue(int)),
+            cephValueAdjustment, SLOT(lowPassFFT(int)));
+    connect(cephaloForm, SIGNAL(send2CutoffValue(int)),
+            cephValueAdjustment, SLOT(highPassFFT(int)));
+    connect(cephaloForm, SIGNAL(sendMedianValue(int)),
+            cephValueAdjustment, SLOT(median(int)));
+
+    connect(panoramaForm, SIGNAL(sendCutOffValue(int)),
+            panoValueAdjustment, SLOT(lowPassFFT(int)));
+    connect(panoramaForm, SIGNAL(send2CutOffValue(int)),
+            panoValueAdjustment, SLOT(highPassFFT(int)));
+    connect(panoramaForm, SIGNAL(sendMedianValue(int)),
+            panoValueAdjustment, SLOT(median(int)));
 }
 
 MainWindow::~MainWindow()

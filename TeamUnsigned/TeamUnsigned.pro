@@ -14,6 +14,8 @@ SOURCES += \
     cephpreset.cpp \
     cephvalueadjustment.cpp \
     dentalimageview.cpp \
+    filterbuttonform.cpp \
+    fourierprocessing.cpp \
     histogram.cpp \
     main.cpp \
     mainwindow.cpp \
@@ -27,6 +29,8 @@ HEADERS += \
     cephpreset.h \
     cephvalueadjustment.h \
     dentalimageview.h \
+    filterbuttonform.h \
+    fourierprocessing.h \
     histogram.h \
     mainwindow.h \
     panopreset.h \
@@ -35,6 +39,7 @@ HEADERS += \
 
 FORMS += \
     cephaloform.ui \
+    filterbuttonform.ui \
     mainwindow.ui \
     panoramaform.ui
 

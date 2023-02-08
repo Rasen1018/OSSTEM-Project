@@ -2,6 +2,7 @@
 #define CEPHALOFORM_H
 
 #include "cephimageview.h"
+#include "filterbuttonform.h"
 
 #include <QWidget>
 
@@ -26,6 +27,9 @@ private:
     QImage defaultImg;
     QPixmap defaultPixmap, prevPixmap;
     CephImageView *cephImageView;
+    /******* 파일버튼 추가 ********/
+    FilterButtonForm *filterWidget;
+    /***************************/
     int imageWidth;
     int imageHeight;
     int panoImgLabelWidth = 360;
@@ -72,6 +76,14 @@ private slots:
 
     void on_hePushButton_clicked();
 
+    void on_filterPushButton_clicked();
+
+    /*****************추가******************/
+    void sendFourierSignal(int);
+    void send2FourierSignal(int);
+    void sendMedianSignal(int);
+    /****************************************/
+
 signals:
 
     void sendCephView(QPixmap);
@@ -85,6 +97,12 @@ signals:
     void sendCephPrev(QPixmap&);
     void sendCephPreset(int);
     void sendSetReset();
+
+    /*****************추가******************/
+    void sendCutOffValue(int);
+    void send2CutoffValue(int);
+    void sendMedianValue(int);
+    /****************************************/
 };
 
 #endif // CEPHALOFORM_H

@@ -1,11 +1,24 @@
 #include "panovalueadjustment.h"
-
+#include "fourierprocessing.h"
 #include "qdebug.h"
 
 #include <QImage>
 
 #define LIMIT_UBYTE(n) (n > UCHAR_MAX) ? UCHAR_MAX : (n < 0) ? 0 : n
 #define PI 3.1416926535f
+
+typedef quint8 ubyte8;
+
+void PanoValueAdjustment::insertion(ushort a[], int n)
+{
+    int i, j;
+    for (i = 1; i < n; i++) {
+        int tmp = a[i];
+        for (j = i; j > 0 && a[j - 1] > tmp; j--)
+            a[j] = a[j - 1];
+        a[j] = tmp;
+    }
+}
 
 PanoValueAdjustment::PanoValueAdjustment(QObject *parent)
     : QObject{parent}
@@ -21,7 +34,7 @@ void PanoValueAdjustment::receiveFile(QPixmap& roadPixmap)
 
     image = defaultImg.convertToFormat(QImage::Format_Grayscale8);
 
-    inimg = (unsigned char*)malloc(sizeof(unsigned char) * imageSize);
+    inimg = (ubyte8*)malloc(sizeof(ubyte8) * imageSize);
 
     inimg = image.bits();
 
@@ -29,17 +42,17 @@ void PanoValueAdjustment::receiveFile(QPixmap& roadPixmap)
     height = image.height();
     imageSize = width * height;
 
-    outimg = (unsigned char*)malloc(sizeof(unsigned char) * imageSize);
-    mask = (unsigned char*)malloc(sizeof(unsigned char) * imageSize);
+    outimg = (ubyte8*)malloc(sizeof(ubyte8) * imageSize);
+    mask = (ubyte8*)malloc(sizeof(ubyte8) * imageSize);
 
-    memset(outimg, 0, sizeof(unsigned char) * imageSize);
-    memset(mask, 0, sizeof(unsigned char) * imageSize);
+    memset(outimg, 0, sizeof(ubyte8) * imageSize);
+    memset(mask, 0, sizeof(ubyte8) * imageSize);
 
-    sharpenImg = (unsigned char*)malloc(sizeof(unsigned char) * imageSize);
-    memset(sharpenImg, 0, sizeof(unsigned char) * imageSize);
+    sharpenImg = (ubyte8*)malloc(sizeof(ubyte8) * imageSize);
+    memset(sharpenImg, 0, sizeof(ubyte8) * imageSize);
 
-    copyImg = (unsigned char*)malloc(sizeof(unsigned char) * imageSize);
-    memset(copyImg, 0, sizeof(unsigned char) * imageSize);
+    copyImg = (ubyte8*)malloc(sizeof(ubyte8) * imageSize);
+    memset(copyImg, 0, sizeof(ubyte8) * imageSize);
     set3x3MaskValue();  // 영상의 Mask 값 구함
 
     for(int i = 0; i < imageSize; i ++){ //영상의 평균 value를 저장하기 위함
@@ -54,7 +67,7 @@ void PanoValueAdjustment::changePanoValue(int brightValue, int contrastValue, in
     QImage image;
 
     float contrast;
-    memset(outimg, 0, sizeof(unsigned char) * imageSize);
+    memset(outimg, 0, sizeof(ubyte8) * imageSize);
 
     /* 밝기값만 조정되는 case */
     if(contrastValue == 0 && sbValue == 0 && deNoiseValue == 0){
@@ -293,8 +306,8 @@ void PanoValueAdjustment::changePanoValue(int brightValue, int contrastValue, in
 }
 
 void PanoValueAdjustment::set3x3MaskValue(){
-    memset(outimg, 0, sizeof(unsigned char) * imageSize);
-    memset(mask, 0, sizeof(unsigned char) * imageSize);
+    memset(outimg, 0, sizeof(ubyte8) * imageSize);
+    memset(mask, 0, sizeof(ubyte8) * imageSize);
 
     double kernel[3][3] = { {1/9.0, 1/9.0, 1/9.0},  //평균값 필터를 이용한 mask 값
                             {1/9.0, 1/9.0, 1/9.0},
@@ -431,7 +444,7 @@ void PanoValueAdjustment::set3x3MaskValue(){
 }
 
 void PanoValueAdjustment::highBoost(int sbValue){ //unsharp mask = 원본이미지 + mask 값
-    memset(outimg, 0, sizeof(unsigned char) * imageSize);
+    memset(outimg, 0, sizeof(ubyte8) * imageSize);
     int sharpen = sbValue * 2.5;
 
     for (int i = 0; i < imageSize; i += 1) {
@@ -441,7 +454,7 @@ void PanoValueAdjustment::highBoost(int sbValue){ //unsharp mask = 원본이미�
 }
 
 void PanoValueAdjustment::blur3x3(int sbValue){
-    memset(outimg, 0, sizeof(unsigned char) * imageSize);
+    memset(outimg, 0, sizeof(ubyte8) * imageSize);
 
     double edge =0.0, mask = 0.0, median = 0.0;
 
@@ -456,7 +469,7 @@ void PanoValueAdjustment::blur3x3(int sbValue){
                             {mask, median, mask},
                             {edge, mask, edge}};
 
-    unsigned char arr[9] = {0};
+    ubyte8 arr[9] = {0};
     double sum = 0.0;
 
     int rowSize = width ;
@@ -581,7 +594,7 @@ void PanoValueAdjustment::blur3x3(int sbValue){
     prevImg = QImage(outimg, width, height, QImage::Format_Grayscale8);
 }
 void PanoValueAdjustment::blur5x5(){
-    memset(outimg, 0, sizeof(unsigned char) * imageSize);
+    memset(outimg, 0, sizeof(ubyte8) * imageSize);
 
     double blur[5][5] = { {1/25.0, 1/25.0, 1/25.0, 1/25.0, 1/25.0},
                           {1/25.0, 1/25.0, 1/25.0, 1/25.0, 1/25.0},
@@ -589,7 +602,7 @@ void PanoValueAdjustment::blur5x5(){
                           {1/25.0, 1/25.0, 1/25.0, 1/25.0, 1/25.0},
                           {1/25.0, 1/25.0, 1/25.0, 1/25.0, 1/25.0} };
 
-    unsigned char arr[25]={0,};
+    ubyte8 arr[25]={0,};
     double sum = 0.0;
 
     int rowSize = width ;
@@ -1107,14 +1120,14 @@ void PanoValueAdjustment::blur5x5(){
 
 void PanoValueAdjustment::receivePrev(QPixmap& pixmap)  // 평탄화
 {
-    memset(outimg, 0, sizeof(unsigned char) * imageSize);
+    memset(outimg, 0, sizeof(ubyte8) * imageSize);
 
     QImage image;
     image = pixmap.scaled(dentalViewWidth, dentalViewHeight).toImage();
 
     image = image.convertToFormat(QImage::Format_Grayscale8);
 
-    unsigned char *histoInimg;
+    ubyte8 *histoInimg;
     histoInimg = image.bits();
 
     width = image.width();
@@ -1159,7 +1172,7 @@ void PanoValueAdjustment::receivePrev(QPixmap& pixmap)  // 평탄화
 
 
 void PanoValueAdjustment::gaussian(float sigma){
-    memset(outimg, 0, sizeof(unsigned char) * imageSize);
+    memset(outimg, 0, sizeof(ubyte8) * imageSize);
 
     float* pBuf;
     pBuf = (float*)malloc(sizeof(float) * width * height);
@@ -1218,8 +1231,8 @@ void PanoValueAdjustment::gaussian(float sigma){
     delete[] pMask;
 }
 
-void PanoValueAdjustment::ADFilter(unsigned char * inimg, int iter){    //deNoising , 다른 연산 수행 함수
-    memset(outimg, 0, sizeof(unsigned char) * imageSize);
+void PanoValueAdjustment::ADFilter(ubyte8 * inimg, int iter){    //deNoising , 다른 연산 수행 함수
+    memset(outimg, 0, sizeof(ubyte8) * imageSize);
 
     float lambda = 0.25;
     float k = 4;
@@ -1255,7 +1268,7 @@ void PanoValueAdjustment::ADFilter(unsigned char * inimg, int iter){    //deNois
             outimg[heightCnt * width + widthCnt] = copy[heightCnt * width + widthCnt] + lambda * (gcn + gcs + gce + gcw);
         }
         if (i < iter - 1)
-            std::memcpy((unsigned char*)copy, outimg, sizeof(unsigned char) * width * height);
+            std::memcpy((ubyte8*)copy, outimg, sizeof(ubyte8) * width * height);
     }
     prevImg = QImage(outimg, width, height, QImage::Format_Grayscale8);
 }
@@ -1393,9 +1406,152 @@ void PanoValueAdjustment::sharpen(int value)// 세팔로 샤픈 임시 저장
     }
 }
 
+void PanoValueAdjustment::median(int value) {
+
+    qDebug() << __FUNCTION__ << value;
+    int imageSize = width * height;
+    int rowSize = width;
+    int widthCnt = 0, heightCnt = -1;
+    int cnt = 0;
+
+    ushort arr[9] = { 0, };
+
+    for (int i = 0; i < imageSize; i++) {
+        widthCnt = i % width;
+        if (i % width == 0) heightCnt++;
+
+        int offset = widthCnt + (heightCnt * width);
+        if (widthCnt == 0) {
+            //좌측 상단 Vertex
+            if (heightCnt == 0) {
+                arr[0] = arr[1] = arr[3] = arr[4] = inimg[widthCnt + (heightCnt * rowSize)];
+                arr[2] = arr[5] = inimg[widthCnt + 1 + (heightCnt * rowSize)];
+                arr[6] = arr[7] = inimg[widthCnt + ((heightCnt + 1) * rowSize)];
+                arr[8] = inimg[widthCnt + 1 + ((heightCnt + 1) * rowSize)];
+            }
+            //좌측 하단 Vertex
+            else if (heightCnt == height - 1) {
+                arr[0] = arr[1] = inimg[widthCnt + ((heightCnt - 1) * rowSize)];
+                arr[2] = inimg[widthCnt + 1 + ((heightCnt - 1) * rowSize)];
+                arr[3] = arr[6] = arr[7] = arr[4] = inimg[widthCnt + ((heightCnt * rowSize))];
+                arr[8] = arr[5] = inimg[widthCnt + 1 + (heightCnt * rowSize)];
+            }
+            else {
+                arr[0] = arr[1] = inimg[widthCnt + ((heightCnt - 1) * rowSize)];
+                arr[2] = inimg[widthCnt + 1 + ((heightCnt - 1) * rowSize)];
+                arr[3] = arr[4] = inimg[widthCnt + (heightCnt * rowSize)];
+                arr[5] = inimg[widthCnt + 1 + (heightCnt * rowSize)];
+                arr[6] = arr[7] = inimg[widthCnt + ((heightCnt + 1) * rowSize)];
+                arr[8] = inimg[widthCnt + 1 + ((heightCnt + 1) * rowSize)];
+            }
+
+            insertion(arr, 9);
+            outimg[(widthCnt + heightCnt * rowSize)] = arr[4];
+        }
+        else if (widthCnt == (rowSize - 1)) {
+            //우측 상단 Vertex
+            if (heightCnt == 0) {
+                arr[0] = arr[3] = inimg[widthCnt - 1 + (heightCnt * rowSize)];
+                arr[1] = arr[2] = arr[5] = arr[4] = inimg[widthCnt + (heightCnt * rowSize)];
+                arr[6] = inimg[widthCnt - 1 + ((heightCnt - 1) * rowSize)];
+                arr[7] = arr[8] = inimg[widthCnt + ((heightCnt + 1) * rowSize)];
+            }
+            //우측 하단 Vertex
+            else if (heightCnt == height - 1) {
+                arr[0] = inimg[widthCnt - 1 + ((heightCnt - 1) * rowSize)];
+                arr[1] = arr[2] = inimg[widthCnt - 1 + ((heightCnt - 1) * rowSize)];
+                arr[3] = arr[6] = inimg[widthCnt - 1 + (heightCnt * rowSize)];
+                arr[4] = arr[5] = arr[7] = arr[8] = inimg[widthCnt + (heightCnt * rowSize)];
+            }
+            else {
+                arr[0] = inimg[widthCnt - 1 + ((heightCnt - 1) * rowSize)];
+                arr[2] = arr[1] = inimg[widthCnt + ((heightCnt - 1) * rowSize)];
+                arr[3] = inimg[widthCnt - 1 + (heightCnt * rowSize)];
+                arr[5] = arr[4] = inimg[widthCnt + (heightCnt * rowSize)];
+                arr[6] = inimg[widthCnt - 1 + ((heightCnt + 1) * rowSize)];
+                arr[8] = arr[7] = inimg[widthCnt + ((heightCnt + 1) * rowSize)];
+            }
+
+            insertion(arr, 9);
+            outimg[(widthCnt + heightCnt * rowSize)] = arr[4];
+        }
+        else if (heightCnt == 0) {
+            if (widthCnt != 1 && widthCnt != rowSize - 1) {
+                arr[0] = arr[3] = inimg[widthCnt - 1 + (heightCnt * rowSize)];
+                arr[1] = arr[4] = inimg[widthCnt + (heightCnt * rowSize)];
+                arr[2] = arr[5] = inimg[widthCnt + 1 + (heightCnt * rowSize)];
+                arr[6] = inimg[widthCnt - 1 + ((heightCnt + 1) * rowSize)];
+                arr[7] = inimg[widthCnt + ((heightCnt + 1) * rowSize)];
+                arr[8] = inimg[widthCnt + 1 + ((heightCnt + 1) * rowSize)];
+            }
+
+            insertion(arr, 9);
+            outimg[(widthCnt + heightCnt * rowSize)] = arr[4];
+        }
+        else if (heightCnt == (height - 1)) {
+            if (widthCnt != 1 && widthCnt != rowSize - 1) {
+                arr[0] = inimg[widthCnt - 1 + ((heightCnt - 1) * rowSize)];
+                arr[1] = inimg[widthCnt + ((heightCnt - 1) * rowSize)];
+                arr[2] = inimg[widthCnt + 1 + ((heightCnt - 1) * rowSize)];
+                arr[3] = arr[6] = inimg[widthCnt - 1 + (heightCnt * rowSize)];
+                arr[4] = arr[7] = inimg[widthCnt + (heightCnt * rowSize)];
+                arr[5] = arr[8] = inimg[widthCnt + 1 + (heightCnt * rowSize)];
+            }
+
+            insertion(arr, 9);
+            outimg[(widthCnt + heightCnt * rowSize)] = arr[4];
+        }
+        else {
+            cnt = 0;
+            for (int i = -1; i < 2; i++) {
+                for (int j = -1; j < 2; j++) {
+                    arr[cnt++] = inimg[((widthCnt + i) + (heightCnt + j) * width)];
+                }
+            }
+            insertion(arr, 9);
+            outimg[(widthCnt + heightCnt * rowSize)] = arr[4];
+        }
+    }
+    image = QImage(outimg, width, height, QImage::Format_Grayscale8);
+    pixmap = pixmap.fromImage(image);
+    emit panoImgSend(pixmap);
+}
+
+
+void PanoValueAdjustment::lowPassFFT(int cutoff) {
+
+    qDebug() << __FUNCTION__ << cutoff;
+    FourierProcessing fourier(width, height, inimg);
+
+    fourier.lowPassGaussian(outimg, cutoff);
+
+    image = QImage(outimg, width, height, QImage::Format_Grayscale8);
+    pixmap = pixmap.fromImage(image);
+    emit panoImgSend(pixmap);
+
+    fourier.ClearMemory();
+}
+
+void PanoValueAdjustment::highPassFFT(int cutoff) {
+
+    qDebug() << __FUNCTION__ << cutoff;
+    FourierProcessing fourier(width, height, inimg);
+
+    fourier.highFrequencyPass(outimg, cutoff);
+
+    image = QImage(outimg, width, height, QImage::Format_Grayscale8);
+    pixmap = pixmap.fromImage(image);
+    emit panoImgSend(pixmap);
+
+
+
+    fourier.ClearMemory();
+}
+
+
 /* preset img 받고 전송 */
 void PanoValueAdjustment::receiveSetPresetImg(QPixmap& prePixmap){
-    memset(inimg, 0, sizeof(unsigned char) * imageSize);
+    memset(inimg, 0, sizeof(ubyte8) * imageSize);
 
     QImage presetImg;
 
@@ -1403,11 +1559,13 @@ void PanoValueAdjustment::receiveSetPresetImg(QPixmap& prePixmap){
     currentImg = presetImg.convertToFormat(QImage::Format_Grayscale8);
 
     inimg = currentImg.bits();
+
 }
 
 void PanoValueAdjustment::setResetImg() {
-    memset(inimg, 0, sizeof(unsigned char) * imageSize);
+    memset(inimg, 0, sizeof(ubyte8) * imageSize);
 
     image = defaultImg.convertToFormat(QImage::Format_Grayscale8);
     inimg = image.bits();
+
 }

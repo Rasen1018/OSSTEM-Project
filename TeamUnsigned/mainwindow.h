@@ -13,6 +13,7 @@ class PanoValueAdjustment;
 class CephValueAdjustment;
 class PanoPreset;
 class CephPreset;
+class FilterButtonForm;
 
 class MainWindow : public QMainWindow
 {

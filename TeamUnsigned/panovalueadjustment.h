@@ -10,6 +10,7 @@ class PanoValueAdjustment : public QObject
     Q_OBJECT
 public:
     explicit PanoValueAdjustment(QObject *parent = nullptr);
+    void insertion(ushort a[], int n);
 
 private:
     QPixmap pixmap, sharpenPixmap;
@@ -17,8 +18,8 @@ private:
     QImage currentImg;
 
     //const uchar* inimg;
-    unsigned char* inimg;
-    unsigned char  *mask, *outimg, *sharpenImg, *copyImg;
+    quint8* inimg;
+    quint8 *mask, *outimg, *sharpenImg, *copyImg;
 
     int width = 0, height = 0, imageSize = 0;
     int dentalViewWidth = 1000;
@@ -41,6 +42,9 @@ private slots:
     void receivePrev(QPixmap&); //prevImg receive
     void receiveSetPresetImg(QPixmap&);
     void setResetImg();
+    void median(int value);
+    void lowPassFFT(int cutoff);
+    void highPassFFT(int cutoff);
 
 signals:
     void panoImgSend(QPixmap&);

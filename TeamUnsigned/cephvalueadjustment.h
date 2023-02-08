@@ -15,8 +15,8 @@ private:
     QImage defaultImg, image, prevImg;
     QImage currentImg;
 
-    unsigned short *inimg;
-    unsigned short *mask, *outimg, *sharpenImg, *copyImg;
+    quint8* inimg;
+    quint8  *mask, *outimg, *sharpenImg, *copyImg;
 
     int width = 0, height = 0, imageSize = 0;
 
@@ -32,7 +32,7 @@ private:
 
    void sharpen(int);// 세팔로 샤픈 임시 저장
    void gaussian(float);
-   void ADFilter(unsigned short* ,int);
+   void ADFilter(quint8*, int);
 
 private slots:
    void receiveFile(QPixmap&);  //defaultImg receive 수정 해야댈 듯
@@ -40,6 +40,9 @@ private slots:
    void receivePrev(QPixmap&); //prevImg receive
    void receiveSetPresetImg(QPixmap&);
    void setResetImg();
+   void median(int value);
+   void lowPassFFT(int cutoff);
+   void highPassFFT(int cutoff);
 
 signals:
     void cephImgSend(QPixmap&);

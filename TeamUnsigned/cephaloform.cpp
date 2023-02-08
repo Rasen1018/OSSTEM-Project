@@ -1,7 +1,6 @@
 #include "cephaloform.h"
 #include "ui_cephaloform.h"
 
-#include <stdio.h>
 #include <QLabel>
 #include <QLineEdit>
 #include <QFile>
@@ -13,6 +12,8 @@
 
 #define LIMIT_UBYTE(n) (n > UCHAR_MAX) ? UCHAR_MAX : (n < 0) ? 0 : n
 
+typedef quint8 ubyte8;
+
 CephaloForm::CephaloForm(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::CephaloForm)
@@ -22,8 +23,16 @@ CephaloForm::CephaloForm(QWidget *parent) :
     cephImageView = new CephImageView;
     cephImageView->setFixedSize(1020, 655);
 
-    //cephImageView->setStyleSheet("border: 1px solid rgb(184,191,200);");
+    /* 필터 버튼 시그널 추가 */
+    filterWidget = new FilterButtonForm;
 
+    connect(filterWidget, SIGNAL(cephLowPassCutOff(int)),
+            this, SLOT(sendFourierSignal(int)));
+    connect(filterWidget, SIGNAL(cephHighPassCutOff(int)),
+            this, SLOT(send2FourierSignal(int)));
+    connect(filterWidget, SIGNAL(sendCephMedian(int)),
+            this, SLOT(sendMedianSignal(int)));
+    /***************************************************/
 
     ui->verticalLayout_7->insertWidget(2, cephImageView);
 
@@ -362,7 +371,8 @@ void CephaloForm::on_imageSaveButton_clicked()
 }
 void CephaloForm::on_filePushButton_clicked()
 {
-    QString filename = QFileDialog::getOpenFileName(this, "Open file", "C:\\Users\\KOSA\\OneDrive\\바탕 화면");
+    QString filename = QFileDialog::getOpenFileName(this, "Open file",
+                                                    "C:\\Users\\KOSA\\OneDrive\\바탕 화면\\PostData");
 
     QPixmap pixmap;
 
@@ -376,11 +386,11 @@ void CephaloForm::on_filePushButton_clicked()
             QByteArray byteArray;
             byteArray = file->readAll();
 
-            unsigned char* data = new unsigned char[ byteArray.size() ];
+            ubyte8* data = new ubyte8[ byteArray.size() ];
             memcpy( data, byteArray.data(), byteArray.size() );
 
             QImage image; //declare variables on header file
-            QImage *temp = new QImage(data, 3000, 2400,QImage::Format_Grayscale16);
+            QImage *temp = new QImage(data, 3000, 2400, QImage::Format_Grayscale16);
             image = *temp;
 
             pixmap = QPixmap::fromImage(image,Qt::AutoColor);
@@ -399,7 +409,7 @@ void CephaloForm::on_filePushButton_clicked()
             emit sendCephView(pixmap);
             ui->cephImgLabel->setPixmap(pixmap.scaled(panoImgLabelWidth, panoImgLabelHeight));
             defaultImg = pixmap.toImage();
-            defaultPixmap =  defaultPixmap.fromImage(defaultImg.convertToFormat(QImage::Format_Grayscale16));
+            defaultPixmap =  defaultPixmap.fromImage(defaultImg.convertToFormat(QImage::Format_Grayscale8));
             ui->progressbarLabel->setText("Success Load Cephalo Image !!!");
         }
         file->close();
@@ -409,7 +419,6 @@ void CephaloForm::on_filePushButton_clicked()
         QMessageBox::warning(this, "Error", "Can't Load this file", QMessageBox::Ok); ;
         return;
     }
-
 
     ui->ceph_Preset_Button1->setStyleSheet("");
     ui->ceph_Preset_Button2->setStyleSheet("");
@@ -445,18 +454,32 @@ void CephaloForm::cephImageSave(QImage& saveimg)
         return;
     }
 
-    FILE* fp;
+    QString filename = QFileDialog::getSaveFileName(this, "Select a file to save", ".",
+                                                    "Image File(*.raw )");
+    QFile * file = new QFile(filename);
+    file->open(QIODevice::WriteOnly | QIODevice::Text);
+    QFileInfo fileInfo(filename);
 
-    fp = fopen("./ceph_result_16_3000x2400.raw", "wb");
-    QImage image = saveimg.convertToFormat(QImage::Format_Grayscale16);
-    ushort* saveFile = reinterpret_cast<ushort*>(image.bits());
+    QByteArray byteArray = filename.toLocal8Bit();
+    const char *saveFileName = byteArray.data();
 
-    for(int i = 0; i < saveimg.width() * saveimg.height(); i++)
-        saveFile[i] = ~saveFile[i];
+    if(fileInfo.isWritable()){
+        FILE* fp;
 
-    fwrite(saveFile, sizeof(unsigned short) * saveimg.width() * saveimg.height(), 1, fp);
+        fp = fopen(saveFileName, "wb");
+        QImage image = saveimg.convertToFormat(QImage::Format_Grayscale16);
+        ushort* saveFile = reinterpret_cast<ushort*>(image.bits());
 
-    fclose(fp);
+        fwrite(saveFile, sizeof(unsigned short) * saveimg.width() * saveimg.height(), 1, fp);
+
+        fclose(fp);
+    }
+    else {
+        QMessageBox::warning(this, "Error", "Can't Save this file", QMessageBox::Ok);
+    }
+
+    file->close();
+    delete file;
 }
 
 void CephaloForm::on_hePushButton_clicked()
@@ -472,4 +495,31 @@ void CephaloForm::on_hePushButton_clicked()
     ui->sbSlider->setValue(0);
     ui->deNoiseSlider->setValue(0);
 }
+
+
+void CephaloForm::on_filterPushButton_clicked()
+{
+    if (filterWidget->getTitle() == "Panorama")
+        filterWidget->exit();
+
+    filterWidget->setTitle("Cephalo");
+    filterWidget->show();
+}
+
+/******************** 시그널/ 슬롯 추가 **********************/
+void CephaloForm::sendFourierSignal(int cutoff) {
+
+    emit sendCutOffValue(cutoff);
+}
+
+void CephaloForm::send2FourierSignal(int cutoff) {
+
+    emit send2CutoffValue(cutoff);
+}
+
+void CephaloForm::sendMedianSignal(int value) {
+
+    emit sendMedianValue(value);
+}
+
 

@@ -2,6 +2,7 @@
 #define PANORAMAFORM_H
 
 #include "dentalimageview.h"
+#include "filterbuttonform.h"
 
 #include <QWidget>
 #include <QObject>
@@ -59,12 +60,21 @@ private slots:
     void on_deNoiseMinusButton_clicked();
     void on_deNoiseSlider_valueChanged(int value);
 
+    void on_filterPushButton_clicked();
+
+    /*****************추가******************/
+    void sendFourierSignal(int);
+    void send2FourierSignal(int);
+    void sendMedianSignal(int);
+    /****************************************/
+
 private:
     Ui::PanoramaForm *ui;
     QFile* file;
     QImage defaultImg;
     QPixmap defaultPixmap, prevPixmap;
     DentalImageView* dentalImageView;
+    FilterButtonForm *filterWidget;
 
     int imageWidth;
     int imageHeight;
@@ -87,6 +97,13 @@ signals:
     void sendPanoPrev(QPixmap&);
     void sendPanoPreset(int);
     void sendSetReset();
+
+    /*****************추가******************/
+    void sendCutOffValue(int);
+    void send2CutOffValue(int);
+    void sendMedianValue(int);
+    /****************************************/
+
 };
 
 #endif // PANORAMAFORM_H

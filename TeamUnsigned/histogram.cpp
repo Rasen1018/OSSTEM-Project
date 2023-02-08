@@ -1,5 +1,7 @@
 #include "histogram.h"
 
+typedef quint8 ubyte8;
+
 Histogram::Histogram(QWidget *parent)
     : QWidget{parent}
 {
@@ -16,10 +18,8 @@ void Histogram:: setHistoChart(){
         set0->append(histo[i]);
     }
 
-
     QBarSeries *series = new QBarSeries();
     series->append(set0);
-
 
     QChart *chart = new QChart();
     chart->addSeries(series);
@@ -31,12 +31,10 @@ void Histogram:: setHistoChart(){
         xValue <<  QString::number(i);
     }
 
-
     QBarCategoryAxis *axisX = new QBarCategoryAxis();
     axisX->append(xValue);
     chart->addAxis(axisX, Qt::AlignBottom);
     series->attachAxis(axisX);
-
 
     QValueAxis *axisY = new QValueAxis();
     axisY->setLabelFormat("%.0f");
@@ -44,10 +42,8 @@ void Histogram:: setHistoChart(){
     chart->addAxis(axisY, Qt::AlignLeft);
     series->attachAxis(axisY);
 
-
     chart->legend()->setVisible(true);
     chart->legend()->setAlignment(Qt::AlignBottom);
-
 
     QChartView *chartView = new QChartView(chart);
     chartView->setRenderHint(QPainter::Antialiasing);
@@ -59,9 +55,7 @@ void Histogram:: setHistoChart(){
     chartView->chart()->setBackgroundBrush(backgroundGradient);
     chartView->chart()->setPlotAreaBackgroundVisible(true);
 
-
     chartView->show();
-
     chartView->resize(300,300);
 }
 
@@ -97,6 +91,5 @@ void Histogram::receiveHisto(QPixmap& pixmap){
     }
 
     setHistoChart();
-
 }
 
