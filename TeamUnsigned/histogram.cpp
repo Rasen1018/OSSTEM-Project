@@ -1,13 +1,11 @@
 #include "histogram.h"
 
-typedef quint8 ubyte8;
-
 Histogram::Histogram(QWidget *parent)
     : QWidget{parent}
 {
 }
 
-void Histogram:: setHistoChart(){
+void Histogram::setHistoChart(){
 
     QString legendName = "value range : " + QString::number(min) + " ~ " +QString::number(max);
 
@@ -57,8 +55,8 @@ void Histogram:: setHistoChart(){
 
     chartView->show();
     chartView->resize(300,300);
-}
 
+}
 void Histogram::receiveHisto(QPixmap& pixmap){
 
     min = 999, max = 0;

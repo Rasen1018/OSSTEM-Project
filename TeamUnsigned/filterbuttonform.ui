@@ -10,8 +10,73 @@
     <height>158</height>
    </rect>
   </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>251</width>
+    <height>158</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>251</width>
+    <height>158</height>
+   </size>
+  </property>
   <property name="windowTitle">
    <string>Form</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QComboBox QAbstractItemView {
+   background-color: rgb(39, 39, 49);
+   selection-background-color: rgb(60, 60, 72);
+   color:white;
+   border: 1px solid rgb(88, 88, 100);
+   border-radius: 4px;
+   padding: 4px;
+   outline: 0;
+}
+QComboBox{	
+border: 1px solid rgb(184,191,200);
+background-color: rgb(39, 39, 49);
+color: white;
+}
+
+QWidget{
+background-color: rgb(31,31,31);
+}
+QLineEdit{
+border: 1px solid rgb(184,191,200);
+color: rgb(184,191,200);
+}
+QLabel{
+color: rgb(184,191,200);
+QLabel::setAlignment (Qt::AlignVCenter );
+QLabel::setAlignment (Qt::AlignHCenter );
+}
+QPushButton{
+color: rgb(184,191,200);
+background-color: rgb(10, 21, 49);
+border: 1px solid rgb(184,191,200);
+border-radius: 3px;
+}
+QPushButton:hover
+{
+border: 2px solid red;
+background-color: rgb(103, 104, 114);
+}
+QPushButton:pressed
+{
+background-color: rgb(35,190,212);
+color: rgb(255, 255, 255);
+}
+
+</string>
   </property>
   <widget class="QPushButton" name="okPushButton">
    <property name="geometry">
@@ -78,6 +143,12 @@
      <height>20</height>
     </rect>
    </property>
+   <property name="font">
+    <font>
+     <pointsize>10</pointsize>
+     <bold>true</bold>
+    </font>
+   </property>
    <property name="text">
     <string>Form Name</string>
    </property>
@@ -116,6 +187,12 @@
      <width>141</width>
      <height>20</height>
     </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">color: white;</string>
+   </property>
+   <property name="placeholderText">
+    <string>Choose Filter</string>
    </property>
   </widget>
  </widget>

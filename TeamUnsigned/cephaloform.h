@@ -27,9 +27,8 @@ private:
     QImage defaultImg;
     QPixmap defaultPixmap, prevPixmap;
     CephImageView *cephImageView;
-    /******* 파일버튼 추가 ********/
     FilterButtonForm *filterWidget;
-    /***************************/
+
     int imageWidth;
     int imageHeight;
     int panoImgLabelWidth = 360;
@@ -39,8 +38,10 @@ private:
     int contrastValue;
     int sbValue;
     int deNoiseValue;
+    int gammaValue;
 
 private slots:
+    void loadDB_Data(QString);
     void on_brightSlider_valueChanged(int value);
     void on_brightMinusButton_clicked();
     void on_brightPlusButton_clicked();
@@ -76,20 +77,26 @@ private slots:
 
     void on_hePushButton_clicked();
 
-    void on_filterPushButton_clicked();
+    void on_exitButton_clicked();
 
-    /*****************추가******************/
     void sendFourierSignal(int);
     void send2FourierSignal(int);
     void sendMedianSignal(int);
-    /****************************************/
+
+    void on_filterPushButton_clicked();
+
+    void on_gammaPlusButton_clicked();
+    void on_gammaMinusButton_clicked();
+    void on_gammaSlider_valueChanged(int value);
+
+    void resetFilCalcValue();
 
 signals:
 
     void sendCephView(QPixmap);
     void sendCephAdj(QPixmap&);
 
-    void sendCephValue(int, int, int, int);  //밝기, 대조, 필터 값
+    void sendCephValue(int, int, int, int, int);  //밝기, 대조, 필터 값
 
     void sendResetCeph(QPixmap&);
     void saveCephSignal();
@@ -97,12 +104,11 @@ signals:
     void sendCephPrev(QPixmap&);
     void sendCephPreset(int);
     void sendSetReset();
+    void exitCephSignal();
 
-    /*****************추가******************/
     void sendCutOffValue(int);
     void send2CutoffValue(int);
     void sendMedianValue(int);
-    /****************************************/
 };
 
 #endif // CEPHALOFORM_H

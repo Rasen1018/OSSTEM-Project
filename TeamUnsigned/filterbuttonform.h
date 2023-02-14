@@ -19,6 +19,12 @@ public:
     QString getTitle();
     void exit();
 
+    void cephReadSettings();
+    void panoReadSettings();
+
+protected:
+    void closeEvent(QCloseEvent *event);
+
 signals:
     void sendPanoMedian(int);
     void sendCephMedian(int);
@@ -28,6 +34,9 @@ signals:
     void cephHighPassCutOff(int);
 
 private slots:
+    void cephWriteSettings();
+    void panoWriteSettings();
+
     void on_okPushButton_clicked();
 
     void on_sortComboBox_currentIndexChanged(int index);

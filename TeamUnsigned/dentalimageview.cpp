@@ -6,8 +6,6 @@
 #include <QFileDialog>
 #include <QMessageBox>
 
-typedef quint8 ubyte8;
-
 DentalImageView::DentalImageView()
 {
 

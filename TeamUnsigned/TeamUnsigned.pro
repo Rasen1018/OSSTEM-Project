@@ -1,4 +1,4 @@
-QT       += core gui
+QT       += core gui sql
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets charts
 
@@ -17,11 +17,13 @@ SOURCES += \
     filterbuttonform.cpp \
     fourierprocessing.cpp \
     histogram.cpp \
+    listwidget.cpp \
     main.cpp \
     mainwindow.cpp \
     panopreset.cpp \
     panoramaform.cpp \
-    panovalueadjustment.cpp
+    panovalueadjustment.cpp \
+    xraydb.cpp
 
 HEADERS += \
     cephaloform.h \
@@ -32,16 +34,20 @@ HEADERS += \
     filterbuttonform.h \
     fourierprocessing.h \
     histogram.h \
+    listwidget.h \
     mainwindow.h \
     panopreset.h \
     panoramaform.h \
-    panovalueadjustment.h
+    panovalueadjustment.h \
+    xraydb.h
 
 FORMS += \
     cephaloform.ui \
     filterbuttonform.ui \
+    listwidget.ui \
     mainwindow.ui \
-    panoramaform.ui
+    panoramaform.ui \
+    xraydb.ui
 
 TRANSLATIONS += \
     TeamUnsigned_ko_KR.ts
@@ -53,3 +59,6 @@ qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 !isEmpty(target.path): INSTALLS += target
+
+RESOURCES += \
+    resource.qrc

@@ -12,8 +12,6 @@
 
 #define LIMIT_UBYTE(n) (n > UCHAR_MAX) ? UCHAR_MAX : (n < 0) ? 0 : n
 
-typedef quint8 ubyte8;
-
 CephaloForm::CephaloForm(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::CephaloForm)
@@ -23,20 +21,7 @@ CephaloForm::CephaloForm(QWidget *parent) :
     cephImageView = new CephImageView;
     cephImageView->setFixedSize(1020, 655);
 
-    /* 필터 버튼 시그널 추가 */
-    filterWidget = new FilterButtonForm;
-
-    connect(filterWidget, SIGNAL(cephLowPassCutOff(int)),
-            this, SLOT(sendFourierSignal(int)));
-    connect(filterWidget, SIGNAL(cephHighPassCutOff(int)),
-            this, SLOT(send2FourierSignal(int)));
-    connect(filterWidget, SIGNAL(sendCephMedian(int)),
-            this, SLOT(sendMedianSignal(int)));
-    /***************************************************/
-
     ui->verticalLayout_7->insertWidget(2, cephImageView);
-
-    connect(ui->exitButton, SIGNAL(clicked()), qApp, SLOT(closeAllWindows()) ); //종료 버튼
 
     /* Send CephaloImg to View*/
     connect(this, SIGNAL(sendCephView(QPixmap)),
@@ -50,13 +35,76 @@ CephaloForm::CephaloForm(QWidget *parent) :
     /* panoimg save 하기위한 SIGNAL/SLOT */
     connect(cephImageView, SIGNAL(sendSave(QImage&)),
             this, SLOT(cephImageSave(QImage&)));
+
 }
 
 CephaloForm::~CephaloForm()
 {
     delete ui;
 }
+void CephaloForm::loadDB_Data(QString cephPath){
+    if(cephPath == "")  return;
 
+    QPixmap pixmap;
+
+    QString extension = cephPath.split("/").last().split(".").last();
+
+    if( extension == "raw"){
+        file = new QFile(cephPath);
+
+        file->open(QFile::ReadOnly);
+
+        QByteArray byteArray;
+        byteArray = file->readAll();
+
+        unsigned char* data = new unsigned char[ byteArray.size() ];
+        memcpy( data, byteArray.data(), byteArray.size() );
+
+        QImage image; //declare variables on header file
+        QImage *temp = new QImage(data, 3000, 2400,QImage::Format_Grayscale16);
+
+        image = *temp;
+
+        pixmap = QPixmap::fromImage(image,Qt::AutoColor);
+
+    }
+    else if( extension != "raw"){
+        pixmap.load(cephPath);
+    }
+
+    emit sendCephAdj(pixmap);
+
+    QStringList nameStr = cephPath.split("/").last().split(".");
+    QString fileName = nameStr.first();
+    ui->pathLineEdit->setText(fileName);
+
+    if(!pixmap.isNull()) {
+        emit sendCephView(pixmap);
+        ui->cephImgLabel->setPixmap(pixmap.scaled(panoImgLabelWidth, panoImgLabelHeight));
+        defaultImg = pixmap.toImage();
+        defaultPixmap =  defaultPixmap.fromImage(defaultImg.convertToFormat(QImage::Format_Grayscale8));
+        ui->progressbarLabel->setText("Success Load Panorama Image !!!");
+    }
+    file->close();
+    delete file;
+
+    ui->ceph_Preset_Button1->setStyleSheet("");
+    ui->ceph_Preset_Button2->setStyleSheet("");
+    ui->ceph_Preset_Button3->setStyleSheet("");
+    ui->ceph_Preset_Button4->setStyleSheet("");
+    ui->ceph_Preset_Button5->setStyleSheet("");
+    ui->ceph_Preset_Button6->setStyleSheet("");
+
+    ui->brightSlider->setValue(0);
+    ui->contrastSlider->setValue(0);
+    ui->sbSlider->setValue(0);
+    ui->deNoiseSlider->setValue(0);
+    ui->gammaSlider->setValue(0);
+
+    for(int i = 0; i <= 100; i ++)
+        ui->ceph_ProgressBar->setValue(i);
+
+}
 void CephaloForm::on_brightSlider_valueChanged(int brightValue)
 {
     QPixmap pixmap;
@@ -66,8 +114,8 @@ void CephaloForm::on_brightSlider_valueChanged(int brightValue)
     contrastValue = ui->contrastSlider->value();
     sbValue = ui->sbSlider->value();
     deNoiseValue = ui->deNoiseSlider->value();
-
-    emit sendCephValue(brightValue , contrastValue, sbValue, deNoiseValue);
+    gammaValue = ui->gammaSlider->value();
+    emit sendCephValue(brightValue , contrastValue, sbValue, deNoiseValue,gammaValue);
 
     ui->brightLineEdit->setText( QString::number(ui->brightSlider->value()) );
 
@@ -104,8 +152,8 @@ void CephaloForm::on_contrastSlider_valueChanged(int contrastValue)
     brightValue = ui->brightSlider->value();
     sbValue = ui->sbSlider->value();
     deNoiseValue = ui->deNoiseSlider->value();
-
-    emit sendCephValue(brightValue , contrastValue, sbValue, deNoiseValue);
+    gammaValue = ui->gammaSlider->value();
+    emit sendCephValue(brightValue , contrastValue, sbValue, deNoiseValue, gammaValue);
 
 
     ui->contrastLineEdit->setText( QString::number(ui->contrastSlider->value()) );
@@ -142,8 +190,8 @@ void CephaloForm::on_sbSlider_valueChanged(int sbValue)
     brightValue = ui->brightSlider->value();
     contrastValue = ui->contrastSlider->value();
     deNoiseValue = ui->deNoiseSlider->value();
-
-    emit sendCephValue(brightValue , contrastValue, sbValue, deNoiseValue);
+    gammaValue = ui->gammaSlider->value();
+    emit sendCephValue(brightValue , contrastValue, sbValue, deNoiseValue, gammaValue);
 
     ui->sbLineEdit->setText( QString::number(ui->sbSlider->value()) );
 }
@@ -169,6 +217,46 @@ void CephaloForm::on_blurButton_clicked()
     ui->sbSlider->setValue(sbValue);
     ui->sbLineEdit->setText( QString::number(sbValue) );
 }
+
+void CephaloForm::on_gammaPlusButton_clicked()
+{
+    if(defaultPixmap.isNull())  return;
+
+    gammaValue = ui->gammaSlider->value();
+    gammaValue++;
+
+    if(gammaValue > 50) return;
+    ui->gammaSlider->setValue(gammaValue);
+    ui->gammaLineEdit->setText( QString::number(gammaValue) );
+}
+
+
+void CephaloForm::on_gammaMinusButton_clicked()
+{
+    if(defaultPixmap.isNull())  return;
+
+    gammaValue = ui->gammaSlider->value();
+    gammaValue--;
+
+    if(gammaValue < -50) return;
+    ui->gammaSlider->setValue(gammaValue);
+    ui->gammaLineEdit->setText( QString::number(gammaValue) );
+}
+
+
+void CephaloForm::on_gammaSlider_valueChanged(int gammaValue)
+{
+    if(defaultPixmap.isNull())  return;
+    brightValue = ui->brightSlider->value();
+    contrastValue = ui->contrastSlider->value();
+    sbValue = ui->sbSlider->value();
+    deNoiseValue = ui->deNoiseSlider->value();
+
+    emit sendCephValue(brightValue, contrastValue, sbValue, deNoiseValue, gammaValue);
+
+    ui->gammaLineEdit->setText( QString::number(ui->gammaSlider->value()) );
+}
+
 void CephaloForm::on_deNoisePlusButton_clicked()
 {
     if(defaultPixmap.isNull())  return;
@@ -201,8 +289,9 @@ void CephaloForm::on_deNoiseSlider_valueChanged(int deNoiseValue)
         brightValue = ui->brightSlider->value();
         contrastValue = ui->contrastSlider->value();
         sbValue = ui->sbSlider->value();
+        gammaValue = ui->gammaSlider->value();
 
-        emit sendCephValue(brightValue, contrastValue, sbValue, deNoiseValue);
+        emit sendCephValue(brightValue, contrastValue, sbValue, deNoiseValue,gammaValue);
 
         ui->deNoiseLineEdit->setText( QString::number(ui->deNoiseSlider->value()) );
 }
@@ -228,6 +317,7 @@ void CephaloForm::on_ceph_Preset_Button1_clicked()
     ui->contrastSlider->setValue(0);
     ui->sbSlider->setValue(0);
     ui->deNoiseSlider->setValue(0);
+    ui->gammaSlider->setValue(0);
 
 }
 void CephaloForm::on_ceph_Preset_Button2_clicked()
@@ -251,6 +341,7 @@ void CephaloForm::on_ceph_Preset_Button2_clicked()
     ui->contrastSlider->setValue(0);
     ui->sbSlider->setValue(0);
     ui->deNoiseSlider->setValue(0);
+    ui->gammaSlider->setValue(0);
 
 }
 void CephaloForm::on_ceph_Preset_Button3_clicked()
@@ -274,6 +365,7 @@ void CephaloForm::on_ceph_Preset_Button3_clicked()
     ui->contrastSlider->setValue(0);
     ui->sbSlider->setValue(0);
     ui->deNoiseSlider->setValue(0);
+    ui->gammaSlider->setValue(0);
 }
 void CephaloForm::on_ceph_Preset_Button4_clicked()
 {
@@ -296,6 +388,7 @@ void CephaloForm::on_ceph_Preset_Button4_clicked()
     ui->contrastSlider->setValue(0);
     ui->sbSlider->setValue(0);
     ui->deNoiseSlider->setValue(0);
+    ui->gammaSlider->setValue(0);
 }
 
 
@@ -320,6 +413,7 @@ void CephaloForm::on_ceph_Preset_Button5_clicked()
     ui->contrastSlider->setValue(0);
     ui->sbSlider->setValue(0);
     ui->deNoiseSlider->setValue(0);
+    ui->gammaSlider->setValue(0);
 }
 void CephaloForm::on_ceph_Preset_Button6_clicked()
 {
@@ -342,6 +436,7 @@ void CephaloForm::on_ceph_Preset_Button6_clicked()
     ui->contrastSlider->setValue(0);
     ui->sbSlider->setValue(0);
     ui->deNoiseSlider->setValue(0);
+    ui->gammaSlider->setValue(0);
 }
 void CephaloForm::on_resetButton_clicked()
 {
@@ -356,6 +451,9 @@ void CephaloForm::on_resetButton_clicked()
     ui->contrastSlider->setValue(0);
     ui->sbSlider->setValue(0);
     ui->deNoiseSlider->setValue(0);
+    ui->gammaSlider->setValue(0);
+
+    prevPixmap = QPixmap();
 
     QPixmap pixmap;
     pixmap = pixmap.fromImage(defaultImg.convertToFormat(QImage::Format_Grayscale8));
@@ -386,11 +484,11 @@ void CephaloForm::on_filePushButton_clicked()
             QByteArray byteArray;
             byteArray = file->readAll();
 
-            ubyte8* data = new ubyte8[ byteArray.size() ];
+            unsigned char* data = new unsigned char[ byteArray.size() ];
             memcpy( data, byteArray.data(), byteArray.size() );
 
             QImage image; //declare variables on header file
-            QImage *temp = new QImage(data, 3000, 2400, QImage::Format_Grayscale16);
+            QImage *temp = new QImage(data, 3000, 2400,QImage::Format_Grayscale16);
             image = *temp;
 
             pixmap = QPixmap::fromImage(image,Qt::AutoColor);
@@ -431,6 +529,7 @@ void CephaloForm::on_filePushButton_clicked()
     ui->contrastSlider->setValue(0);
     ui->sbSlider->setValue(0);
     ui->deNoiseSlider->setValue(0);
+    ui->gammaSlider->setValue(0);
     for(int i = 0; i <=100; i++)
         ui->ceph_ProgressBar->setValue(i);
 }
@@ -494,15 +593,31 @@ void CephaloForm::on_hePushButton_clicked()
     ui->contrastSlider->setValue(0);
     ui->sbSlider->setValue(0);
     ui->deNoiseSlider->setValue(0);
+    ui->gammaSlider->setValue(0);
 }
 
 
+void CephaloForm::on_exitButton_clicked()
+{
+    emit exitCephSignal();
+}
+
 void CephaloForm::on_filterPushButton_clicked()
 {
+    filterWidget = new FilterButtonForm;
+
+    connect(filterWidget, SIGNAL(cephLowPassCutOff(int)),
+            this, SLOT(sendFourierSignal(int)));
+    connect(filterWidget, SIGNAL(cephHighPassCutOff(int)),
+            this, SLOT(send2FourierSignal(int)));
+    connect(filterWidget, SIGNAL(sendCephMedian(int)),
+            this, SLOT(sendMedianSignal(int)));
+
     if (filterWidget->getTitle() == "Panorama")
         filterWidget->exit();
 
     filterWidget->setTitle("Cephalo");
+    filterWidget->cephReadSettings();
     filterWidget->show();
 }
 
@@ -521,5 +636,11 @@ void CephaloForm::sendMedianSignal(int value) {
 
     emit sendMedianValue(value);
 }
-
+void CephaloForm::resetFilCalcValue(){
+    ui->brightSlider->setValue(0);
+    ui->contrastSlider->setValue(0);
+    ui->sbSlider->setValue(0);
+    ui->deNoiseSlider->setValue(0);
+    ui->gammaSlider->setValue(0);
+}
 

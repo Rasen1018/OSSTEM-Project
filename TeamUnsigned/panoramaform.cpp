@@ -9,9 +9,9 @@
 #include <QPainter>
 #include <QMessageBox>
 
-#define LIMIT_UBYTE(n) (n > UCHAR_MAX) ? UCHAR_MAX : (n < 0) ? 0 : n
+#include "filterbuttonform.h"
 
-typedef quint8 ubyte8;
+#define LIMIT_UBYTE(n) (n > UCHAR_MAX) ? UCHAR_MAX : (n < 0) ? 0 : n
 
 PanoramaForm::PanoramaForm(QWidget *parent) :
     QWidget(parent),
@@ -22,35 +22,21 @@ PanoramaForm::PanoramaForm(QWidget *parent) :
     dentalImageView = new DentalImageView;
     dentalImageView->setFixedSize(1020, 655);
 
-    /* 필터 버튼 시그널 추가 */
-    filterWidget = new FilterButtonForm;
-
-    connect(filterWidget, SIGNAL(panoLowPassCutOff(int)),
-            this, SLOT(sendFourierSignal(int)));
-    connect(filterWidget, SIGNAL(panoHighPassCutOff(int)),
-            this, SLOT(send2FourierSignal(int)));
-    connect(filterWidget, SIGNAL(sendPanoMedian(int)),
-            this, SLOT(sendMedianSignal(int)));
-    /***************************************************/
-
-    //dentalImageView->setStyleSheet("border: 1px solid rgb(184,191,200);");
-
     ui->verticalLayout_7->insertWidget(2, dentalImageView);
 
-    connect(ui->exitButton, SIGNAL(clicked()), qApp, SLOT(closeAllWindows()) ); //종료 버튼
-
-    /* Send PanoramaImg to View*/
+    /* panoramaForm 의 이미지를 View 로 전송하는 SIGNAL/SLOT */
     connect(this, SIGNAL(sendPanoView(QPixmap)),
             dentalImageView, SLOT(receiveLoadImg(QPixmap)));
-    /* Reset PanoImage SIGNAL/SLOT */
+    /* reset 신호, 원본 이미지를 View로 전송하는 SIGNAL/SLOT */
     connect(this, SIGNAL(sendResetPano(QPixmap&)),
             dentalImageView, SLOT(receiveResetPano(QPixmap&)));
-    /* SaveSignal SIGNAL/SLOT */
+    /* 저장 버튼에 대한 SIGNAL/SLOT */
     connect(this, SIGNAL(savePanoSignal()),
             dentalImageView, SLOT(receiveSavePano()));
-    /* panoimg save 하기위한 SIGNAL/SLOT */
+    /* View 에서 후처리한 영상을 저장하기 위해 받아오는 SIGNAL/SLOT */
     connect(dentalImageView, SIGNAL(sendSave(QImage&)),
             this, SLOT(panoImageSave(QImage&)));
+
 
 }
 
@@ -58,352 +44,74 @@ PanoramaForm::~PanoramaForm()
 {
     delete ui;
 }
-
-/********************************************************************************************/
-/********************************************************************************************/
-void PanoramaForm::on_brightSlider_valueChanged(int brightValue)
-{
-    QPixmap pixmap;
-
-    if(defaultPixmap.isNull())  return;
-    else
-    {
-        contrastValue = ui->contrastSlider->value();
-        sbValue = ui->sbSlider->value();
-        deNoiseValue = ui->deNoiseSlider->value();
-        emit sendPanoValue(brightValue , contrastValue, sbValue, deNoiseValue);
-    }
-    ui->brightLineEdit->setText( QString::number(ui->brightSlider->value()) );
-}
-
-
-
-void PanoramaForm::on_brightMinusButton_clicked()
-{
-    if(defaultPixmap.isNull())  return;
-    else {
-        brightValue = ui->brightSlider->value();
-        brightValue -= 10;
-        if(brightValue < -100) return;
-        ui->brightSlider->setValue(brightValue);
-        ui->brightLineEdit->setText( QString::number(brightValue) );
-    }
-}
-
-void PanoramaForm::on_brightPlusButton_clicked()
-{
-    if(defaultPixmap.isNull())  return;
-    else {
-        brightValue = ui->brightSlider->value();
-        brightValue += 10;
-        if(brightValue > 100) return;
-        ui->brightSlider->setValue(brightValue);
-        ui->brightLineEdit->setText( QString::number(brightValue) );
-
-    }
-}
-
-
-
-/********************************************************************************************/
-void PanoramaForm::on_contrastSlider_valueChanged(int contrastValue)
-{   if(defaultPixmap.isNull())  return;
+/* type이 panorama 인 DB load하는 슬롯 */
+void PanoramaForm::loadDB_Data(QString panoPath){
+    if(panoPath == "")return;
 
     QPixmap pixmap;
-    QImage image = defaultImg;
 
-    brightValue = ui->brightSlider->value();
-    sbValue = ui->sbSlider->value();
-    deNoiseValue = ui->deNoiseSlider->value();
+    QString extension = panoPath.split("/").last().split(".").last();
 
-    emit sendPanoValue(brightValue , contrastValue, sbValue, deNoiseValue);
+    if( extension == "raw"){
+        file = new QFile(panoPath);
 
+        file->open(QFile::ReadOnly);
 
-    ui->contrastLineEdit->setText( QString::number(ui->contrastSlider->value()) );
+        QByteArray byteArray;
+        byteArray = file->readAll();
 
-}
-void PanoramaForm::on_contrastMinusButton_clicked()
-{
-    if(defaultPixmap.isNull())  return;
-    else {
-        contrastValue = ui->contrastSlider->value();
-        contrastValue -= 10;
-        if(contrastValue < -100) return;
-        ui->contrastSlider->setValue(contrastValue);
-        ui->contrastLineEdit->setText( QString::number(contrastValue) );
+        unsigned char* data = new unsigned char[ byteArray.size() ];
+        memcpy( data, byteArray.data(), byteArray.size() );
 
-    }
-}
+        QImage image; //declare variables on header file
+        QImage *temp = new QImage(data, 3000, 1628,QImage::Format_Grayscale16);
 
-void PanoramaForm::on_contrastPlusButton_clicked()
-{
-    if(defaultPixmap.isNull())  return;
-    else {
-        contrastValue = ui->contrastSlider->value();
-        contrastValue += 10;
-        if(contrastValue > 100) return;
-        ui->contrastSlider->setValue(contrastValue);
-        ui->contrastLineEdit->setText( QString::number(contrastValue) );
+        image = *temp;
+
+        pixmap = QPixmap::fromImage(image,Qt::AutoColor);
 
     }
-}
+    else if( extension != "raw"){
+        pixmap.load(panoPath);
+    }
 
-/********************************************************************************************/
-void PanoramaForm::on_sharpenButton_clicked()
-{
-    if(defaultPixmap.isNull())  return;
+    emit sendPanoAdj(pixmap);
 
-    sbValue = ui->sbSlider->value();
-    sbValue--;
+    QStringList nameStr = panoPath.split("/").last().split(".");
+    QString fileName = nameStr.first();
+    ui->pathLineEdit->setText(fileName);
 
-    if(sbValue < -6) return;
-    ui->sbSlider->setValue(sbValue);
-    ui->sbLineEdit->setText( QString::number(sbValue) );
-}
+    if(!pixmap.isNull()) {
+        emit sendPanoView(pixmap);
+        ui->panoImgLabel->setPixmap(pixmap.scaled(panoImgLabelWidth, panoImgLabelHeight));
+        defaultImg = pixmap.toImage();
+        defaultPixmap =  defaultPixmap.fromImage(defaultImg.convertToFormat(QImage::Format_Grayscale8));
+        ui->progressbarLabel->setText("Success Load Panorama Image !!!");
+    }
+    file->close();
+    delete file;
 
-void PanoramaForm::on_blurButton_clicked()
-{
-    if(defaultPixmap.isNull())  return;
-
-    sbValue = ui->sbSlider->value();
-    sbValue++;
-
-    if(sbValue > 6) return;
-    ui->sbSlider->setValue(sbValue);
-    ui->sbLineEdit->setText( QString::number(sbValue) );
-}
-
-
-void PanoramaForm::on_sbSlider_valueChanged(int sbValue)
-{
-    if(defaultPixmap.isNull())  return;
-
-    brightValue = ui->brightSlider->value();
-    contrastValue = ui->contrastSlider->value();
-    deNoiseValue = ui->deNoiseSlider->value();
-
-    emit sendPanoValue(brightValue , contrastValue, sbValue, deNoiseValue);
-
-    ui->sbLineEdit->setText( QString::number(ui->sbSlider->value()) );
-}
-void PanoramaForm::on_deNoisePlusButton_clicked()
-{
-    if(defaultPixmap.isNull())  return;
-
-    deNoiseValue = ui->deNoiseSlider->value();
-    deNoiseValue++;
-
-    if(deNoiseValue > 10) return;
-    ui->deNoiseSlider->setValue(deNoiseValue);
-    ui->deNoiseLineEdit->setText( QString::number(deNoiseValue) );
-}
-
-void PanoramaForm::on_deNoiseMinusButton_clicked()
-{
-    if(defaultPixmap.isNull())  return;
-
-    deNoiseValue = ui->deNoiseSlider->value();
-    deNoiseValue--;
-
-    if(deNoiseValue < 0) return;
-    ui->deNoiseSlider->setValue(deNoiseValue);
-    ui->deNoiseLineEdit->setText( QString::number(deNoiseValue) );
-
-}
-void PanoramaForm::on_deNoiseSlider_valueChanged(int deNoiseValue)
-{
-    if(defaultPixmap.isNull())  return;
-    brightValue = ui->brightSlider->value();
-    contrastValue = ui->contrastSlider->value();
-    sbValue = ui->sbSlider->value();
-
-    emit sendPanoValue(brightValue, contrastValue, sbValue, deNoiseValue);
-
-    ui->deNoiseLineEdit->setText( QString::number(ui->deNoiseSlider->value()) );
-    \
-}
-
-
-/********************************************************************************************/
-void PanoramaForm::on_preset_Button1_clicked()
-{
-    int preset = 1;
-
-    /* preset button ui 초기화 */
-    ui->preset_Button2->setStyleSheet("");
-    ui->preset_Button3->setStyleSheet("");
-    ui->preset_Button4->setStyleSheet("");
-    ui->preset_Button5->setStyleSheet("");
-    ui->preset_Button6->setStyleSheet("");
-    ui->preset_Button1->setStyleSheet("background-color: rgb(35, 190, 212);"
-                                      "color: rgb(255, 255, 255);"
-                                      "border: 2px solid rgb(184,191,200);");
-    if(defaultPixmap.isNull())  return;
-
-    emit sendPanoPreset(preset);
-
-    /* Image Send 후 value 초기화 */
-    ui->brightSlider->setValue(0);
-    ui->contrastSlider->setValue(0);
-    ui->sbSlider->setValue(0);
-    ui->deNoiseSlider->setValue(0);
-}
-
-void PanoramaForm::on_preset_Button2_clicked()
-{
-    int preset = 2;
-
-    /* preset button ui 초기화 */
-    ui->preset_Button1->setStyleSheet("");
-    ui->preset_Button3->setStyleSheet("");
-    ui->preset_Button4->setStyleSheet("");
-    ui->preset_Button5->setStyleSheet("");
-    ui->preset_Button6->setStyleSheet("");
-    ui->preset_Button2->setStyleSheet("background-color: rgb(35, 190, 212);"
-                                      "color: rgb(255, 255, 255);"
-                                      "border: 2px solid rgb(184,191,200);");
-
-    if(defaultPixmap.isNull())  return;
-
-    emit sendPanoPreset(preset);
-
-    /* Image Send 후 value 초기화 */
-    ui->brightSlider->setValue(0);
-    ui->contrastSlider->setValue(0);
-    ui->sbSlider->setValue(0);
-    ui->deNoiseSlider->setValue(0);
-}
-
-void PanoramaForm::on_preset_Button3_clicked()
-{
-    int preset = 3;
-
-    /* preset button ui 초기화 */
-    ui->preset_Button1->setStyleSheet("");
-    ui->preset_Button2->setStyleSheet("");
-    ui->preset_Button4->setStyleSheet("");
-    ui->preset_Button5->setStyleSheet("");
-    ui->preset_Button6->setStyleSheet("");
-    ui->preset_Button3->setStyleSheet("background-color: rgb(35, 190, 212);"
-                                      "color: rgb(255, 255, 255);"
-                                      "border: 2px solid rgb(184,191,200);");
-    if(defaultPixmap.isNull())  return;
-
-    emit sendPanoPreset(preset);
-
-    /* Image Send 후 value 초기화 */
-    ui->brightSlider->setValue(0);
-    ui->contrastSlider->setValue(0);
-    ui->sbSlider->setValue(0);
-    ui->deNoiseSlider->setValue(0);
-}
-
-void PanoramaForm::on_preset_Button4_clicked()
-{
-    int preset = 4;
-    /* preset button ui 초기화 */
-    ui->preset_Button1->setStyleSheet("");
-    ui->preset_Button2->setStyleSheet("");
-    ui->preset_Button3->setStyleSheet("");
-    ui->preset_Button5->setStyleSheet("");
-    ui->preset_Button6->setStyleSheet("");
-    ui->preset_Button4->setStyleSheet("background-color: rgb(35, 190, 212);"
-                                      "color: rgb(255, 255, 255);"
-                                      "border: 2px solid rgb(184,191,200);");
-    if(defaultPixmap.isNull())  return;
-
-    emit sendPanoPreset(preset);
-
-    /* Image Send 후 value 초기화 */
-    ui->brightSlider->setValue(0);
-    ui->contrastSlider->setValue(0);
-    ui->sbSlider->setValue(0);
-    ui->deNoiseSlider->setValue(0);
-}
-
-void PanoramaForm::on_preset_Button5_clicked()
-{
-    int preset = 5;
-
-    /* preset button ui 초기화 */
-    ui->preset_Button1->setStyleSheet("");
-    ui->preset_Button2->setStyleSheet("");
-    ui->preset_Button3->setStyleSheet("");
-    ui->preset_Button4->setStyleSheet("");
-    ui->preset_Button6->setStyleSheet("");
-    ui->preset_Button5->setStyleSheet("background-color: rgb(35, 190, 212);"
-                                      "color: rgb(255, 255, 255);"
-                                      "border: 2px solid rgb(184,191,200);");
-    if(defaultPixmap.isNull())  return;
-
-    emit sendPanoPreset(preset);
-
-    /* Image Send 후 value 초기화 */
-    ui->brightSlider->setValue(0);
-    ui->contrastSlider->setValue(0);
-    ui->sbSlider->setValue(0);
-    ui->deNoiseSlider->setValue(0);
-}
-void PanoramaForm::on_preset_Button6_clicked()
-{
-    int preset = 6;
-    /* preset button ui 초기화 */
-    ui->preset_Button1->setStyleSheet("");
-    ui->preset_Button2->setStyleSheet("");
-    ui->preset_Button3->setStyleSheet("");
-    ui->preset_Button4->setStyleSheet("");
-    ui->preset_Button5->setStyleSheet("");
-    ui->preset_Button6->setStyleSheet("background-color: rgb(35, 190, 212);"
-                                      "color: rgb(255, 255, 255);"
-                                      "border: 2px solid rgb(184,191,200);");
-    if(defaultPixmap.isNull())  return;
-
-    emit sendPanoPreset(preset);
-
-    /* Image Send 후 value 초기화 */
-    ui->brightSlider->setValue(0);
-    ui->contrastSlider->setValue(0);
-    ui->sbSlider->setValue(0);
-    ui->deNoiseSlider->setValue(0);
-}
-
-
-/********************************************************************************************/
-void PanoramaForm::on_resetButton_clicked()
-{
-    if(defaultImg.isNull())
-        return;
-
+    /* ui 설정 */
     ui->preset_Button1->setStyleSheet("");
     ui->preset_Button2->setStyleSheet("");
     ui->preset_Button3->setStyleSheet("");
     ui->preset_Button4->setStyleSheet("");
     ui->preset_Button5->setStyleSheet("");
     ui->preset_Button6->setStyleSheet("");
-
     ui->brightSlider->setValue(0);
     ui->contrastSlider->setValue(0);
     ui->sbSlider->setValue(0);
     ui->deNoiseSlider->setValue(0);
 
-    QPixmap pixmap;
-    pixmap = pixmap.fromImage(defaultImg.convertToFormat(QImage::Format_Grayscale8));
-
-    emit sendResetPano(pixmap);
-    emit sendSetReset();
+    /* prograssBar 설정 */
+    for(int i = 0; i <= 100; i ++)
+        ui->panoProgressBar->setValue(i);
 }
-
-
-void PanoramaForm::on_imageSaveButton_clicked()
-{
-    emit savePanoSignal();
-}
-
+/* Load버튼 클릭 시, 이미지를 load하는 슬롯 */
 void PanoramaForm::on_filePushButton_clicked()
 {
     QString filename = QFileDialog::getOpenFileName(this, "Open file",
                                                     "C:\\Users\\KOSA\\OneDrive\\바탕 화면\\PostData");
-
     QPixmap pixmap;
 
     if(filename.length()) {          // 파일이 존재한다면
@@ -420,9 +128,7 @@ void PanoramaForm::on_filePushButton_clicked()
             memcpy( data, byteArray.data(), byteArray.size() );
 
             QImage image; //declare variables on header file
-
             QImage *temp = new QImage(data, 3000, 1628,QImage::Format_Grayscale16);
-
             image = *temp;
 
             pixmap = QPixmap::fromImage(image,Qt::AutoColor);
@@ -452,34 +158,399 @@ void PanoramaForm::on_filePushButton_clicked()
         QMessageBox::warning(this, "Error", "Can't Load this file", QMessageBox::Ok); ;
         return;
     }
+    /* ui 설정 */
     ui->preset_Button1->setStyleSheet("");
     ui->preset_Button2->setStyleSheet("");
     ui->preset_Button3->setStyleSheet("");
     ui->preset_Button4->setStyleSheet("");
     ui->preset_Button5->setStyleSheet("");
     ui->preset_Button6->setStyleSheet("");
-
     ui->brightSlider->setValue(0);
     ui->contrastSlider->setValue(0);
     ui->sbSlider->setValue(0);
     ui->deNoiseSlider->setValue(0);
 
+    /* prograssBar 설정 */
     for(int i = 0; i <= 100; i ++)
         ui->panoProgressBar->setValue(i);
 }
 
-void PanoramaForm::text(QPixmap &pixmap)
+/* panoramaForm ui의 밝기 값을 처리하는 슬롯 */
+void PanoramaForm::on_brightSlider_valueChanged(int brightValue)
 {
-    ui->panoImgLabel->setPixmap(QPixmap());
-    ui->panoImgLabel->setPixmap(pixmap.scaled(1105, 600));
+    if(defaultPixmap.isNull())  return; //이미지가 load되지 않은 경우 예외 처리
+
+    contrastValue = ui->contrastSlider->value();
+    sbValue = ui->sbSlider->value();
+    deNoiseValue = ui->deNoiseSlider->value();
+    gammaValue = ui->gammaSlider->value();
+    ui->brightLineEdit->setText( QString::number(ui->brightSlider->value()) );
+
+    /* panorama 연산 클래스로 연산값 전달하는 SIGNAL */
+    emit sendPanoValue(brightValue , contrastValue, sbValue, deNoiseValue,gammaValue);
+}
+/* 밝기값 감소 슬롯 */
+void PanoramaForm::on_brightMinusButton_clicked()
+{
+    if(defaultPixmap.isNull())  return; //이미지가 load되지 않은 경우 예외 처리
+    brightValue = ui->brightSlider->value();
+    brightValue -= 10;
+
+    if(brightValue < -100) return;  //정해진 값보다 작으면 예외 처리
+    ui->brightSlider->setValue(brightValue);
+    ui->brightLineEdit->setText( QString::number(brightValue) );
+
+}
+/* 밝기값 증가 슬롯 */
+void PanoramaForm::on_brightPlusButton_clicked()
+{
+    if(defaultPixmap.isNull())  return; //이미지가 load되지 않은 경우 예외 처리
+    brightValue = ui->brightSlider->value();
+    brightValue += 10;
+
+    if(brightValue > 100) return;   //정해진 값보다 크면 예외 처리
+    ui->brightSlider->setValue(brightValue);
+    ui->brightLineEdit->setText( QString::number(brightValue) );
+}
+/* panoramaForm ui의 대조 값을 처리하는 슬롯 */
+void PanoramaForm::on_contrastSlider_valueChanged(int contrastValue)
+{
+    if(defaultPixmap.isNull())  return; //이미지가 load되지 않은 경우 예외 처리
+
+    brightValue = ui->brightSlider->value();
+    sbValue = ui->sbSlider->value();
+    deNoiseValue = ui->deNoiseSlider->value();
+    gammaValue = ui->gammaSlider->value();
+    ui->contrastLineEdit->setText( QString::number(ui->contrastSlider->value()) );
+
+    /* panorama 연산 클래스로 연산값 전달하는 SIGNAL */
+    emit sendPanoValue(brightValue , contrastValue, sbValue, deNoiseValue, gammaValue);
+}
+/* 대조값 감소 슬롯 */
+void PanoramaForm::on_contrastMinusButton_clicked()
+{
+    if(defaultPixmap.isNull())  return; //이미지가 load되지 않은 경우 예외 처리
+    contrastValue = ui->contrastSlider->value();
+    contrastValue -= 10;
+
+    if(contrastValue < -100) return;    //정해진 값보다 작으면 예외 처리
+    ui->contrastSlider->setValue(contrastValue);
+    ui->contrastLineEdit->setText( QString::number(contrastValue) );
+}
+/* 대조값 증가 슬롯 */
+void PanoramaForm::on_contrastPlusButton_clicked()
+{
+    if(defaultPixmap.isNull())  return;  //이미지가 load되지 않은 경우 예외 처리
+    contrastValue = ui->contrastSlider->value();
+    contrastValue += 10;
+
+    if(contrastValue > 100) return;      //정해진 값보다 크면 예외 처리
+    ui->contrastSlider->setValue(contrastValue);
+    ui->contrastLineEdit->setText( QString::number(contrastValue) );
+
+}
+/* panoramaForm ui의 선예도 값을 처리하는 슬롯 */
+void PanoramaForm::on_sbSlider_valueChanged(int sbValue)
+{
+    if(defaultPixmap.isNull())  return;  //이미지가 load되지 않은 경우 예외 처
+
+    brightValue = ui->brightSlider->value();
+    contrastValue = ui->contrastSlider->value();
+    deNoiseValue = ui->deNoiseSlider->value();
+    gammaValue = ui->gammaSlider->value();
+    ui->sbLineEdit->setText( QString::number(ui->sbSlider->value()) );
+
+    /* panorama 연산 클래스로 연산값 전달하는 SIGNAL */
+    emit sendPanoValue(brightValue , contrastValue, sbValue, deNoiseValue,gammaValue);
+}
+/* 선예도 감소 슬롯 */
+void PanoramaForm::on_blurButton_clicked()
+{
+    if(defaultPixmap.isNull())  return; //이미지가 load되지 않은 경우 예외 처리
+
+    sbValue = ui->sbSlider->value();
+    sbValue--;
+
+    if(sbValue < -6) return;            //정해진 값보다 작으면 예외 처리
+    ui->sbSlider->setValue(sbValue);
+    ui->sbLineEdit->setText( QString::number(sbValue) );
+}
+/* 선예도 증가 슬롯*/
+void PanoramaForm::on_sharpenButton_clicked()
+{
+    if(defaultPixmap.isNull())  return; //이미지가 load되지 않은 경우 예외 처리
+
+    sbValue = ui->sbSlider->value();
+    sbValue++;
+
+    if(sbValue > 6) return;             //정해진 값보다 크면 예외 처리
+    ui->sbSlider->setValue(sbValue);
+    ui->sbLineEdit->setText( QString::number(sbValue) );
+}
+/* panoramaForm ui의 감마 값을 처리하는 슬롯 */
+void PanoramaForm::on_gammaSlider_valueChanged(int gammaValue)
+{
+    if(defaultPixmap.isNull())  return; //이미지가 load되지 않은 경우 예외 처리
+    brightValue = ui->brightSlider->value();
+    contrastValue = ui->contrastSlider->value();
+    sbValue = ui->sbSlider->value();
+    deNoiseValue = ui->deNoiseSlider->value();
+    ui->gammaLineEdit->setText( QString::number(ui->gammaSlider->value()) );
+
+    /* panorama 연산 클래스로 연산값 전달하는 SIGNAL */
+    emit sendPanoValue(brightValue, contrastValue, sbValue, deNoiseValue, gammaValue);
+}
+/* 감마 값 감소 슬롯*/
+void PanoramaForm::on_gammaMinusButton_clicked()
+{
+    if(defaultPixmap.isNull())  return; //이미지가 load되지 않은 경우 예외 처리
+
+    gammaValue = ui->gammaSlider->value();
+    gammaValue--;
+
+    if(gammaValue < -50) return;        //정해진 값보다 작으면 예외 처리
+    ui->gammaSlider->setValue(gammaValue);
+    ui->gammaLineEdit->setText( QString::number(gammaValue) );
+}
+/* 감마 값 증가 슬롯*/
+void PanoramaForm::on_gammaPlusButton_clicked()
+{
+    if(defaultPixmap.isNull())  return; //이미지가 load되지 않은 경우 예외 처리
+
+    gammaValue = ui->gammaSlider->value();
+    gammaValue++;
+
+    if(gammaValue > 50) return;         //정해진 값보다 크면 예외 처리
+    ui->gammaSlider->setValue(gammaValue);
+    ui->gammaLineEdit->setText( QString::number(gammaValue) );
+}
+/* panoramaForm ui의 deNoise를 처리하는 슬롯 */
+void PanoramaForm::on_deNoiseSlider_valueChanged(int deNoiseValue)
+{
+    if(defaultPixmap.isNull())  return;
+    brightValue = ui->brightSlider->value();
+    contrastValue = ui->contrastSlider->value();
+    sbValue = ui->sbSlider->value();
+    gammaValue = ui->gammaSlider->value();
+
+    emit sendPanoValue(brightValue, contrastValue, sbValue, deNoiseValue,gammaValue);
+
+    ui->deNoiseLineEdit->setText( QString::number(ui->deNoiseSlider->value()) );
+}
+/* deNoise 값 증가 슬롯 */
+void PanoramaForm::on_deNoisePlusButton_clicked()
+{
+    if(defaultPixmap.isNull())  return; //이미지가 load되지 않은 경우 예외 처리
+
+    deNoiseValue = ui->deNoiseSlider->value();
+    deNoiseValue++;
+
+    if(deNoiseValue > 10) return;       //정해진 값보다 크면 예외 처리
+    ui->deNoiseSlider->setValue(deNoiseValue);
+    ui->deNoiseLineEdit->setText( QString::number(deNoiseValue) );
+}
+/* deNoise 값 감소 슬롯 */
+void PanoramaForm::on_deNoiseMinusButton_clicked()
+{
+    if(defaultPixmap.isNull())  return; //이미지가 load되지 않은 경우 예외 처리
+
+    deNoiseValue = ui->deNoiseSlider->value();
+    deNoiseValue--;
+
+    if(deNoiseValue < 0) return;        //정해진 값보다 작으면 예외 처리
+    ui->deNoiseSlider->setValue(deNoiseValue);
+    ui->deNoiseLineEdit->setText( QString::number(deNoiseValue) );
 }
 
+/* panoramaForm의 1번 프리셋을 처리하는 슬롯 */
+void PanoramaForm::on_preset_Button1_clicked()
+{
+    int preset = 1;
+
+    /* preset button ui 초기화 */
+    ui->preset_Button2->setStyleSheet("");
+    ui->preset_Button3->setStyleSheet("");
+    ui->preset_Button4->setStyleSheet("");
+    ui->preset_Button5->setStyleSheet("");
+    ui->preset_Button6->setStyleSheet("");
+    ui->preset_Button1->setStyleSheet("background-color: rgb(35, 190, 212);"
+                                      "color: rgb(255, 255, 255);"
+                                      "border: 2px solid rgb(184,191,200);");
+    if(defaultPixmap.isNull())  return;  //이미지가 load되지 않은 경우 예외 처리
+
+    emit sendPanoPreset(preset);         //프리셋 연산 클래스로 번호 전송
+
+    /* Image Send 후 value 초기화 */
+    ui->brightSlider->setValue(0);
+    ui->contrastSlider->setValue(0);
+    ui->sbSlider->setValue(0);
+    ui->deNoiseSlider->setValue(0);
+    ui->gammaSlider->setValue(0);
+
+}
+/* panoramaForm의 2번 프리셋을 처리하는 슬롯 */
+void PanoramaForm::on_preset_Button2_clicked()
+{
+    int preset = 2;
+
+    /* preset button ui 초기화 */
+    ui->preset_Button1->setStyleSheet("");
+    ui->preset_Button3->setStyleSheet("");
+    ui->preset_Button4->setStyleSheet("");
+    ui->preset_Button5->setStyleSheet("");
+    ui->preset_Button6->setStyleSheet("");
+    ui->preset_Button2->setStyleSheet("background-color: rgb(35, 190, 212);"
+                                      "color: rgb(255, 255, 255);"
+                                      "border: 2px solid rgb(184,191,200);");
+
+    if(defaultPixmap.isNull())  return; //이미지가 load되지 않은 경우 예외 처리
+
+    emit sendPanoPreset(preset);        //프리셋 연산 클래스로 번호 전송
+
+    /* Image Send 후 value 초기화 */
+    ui->brightSlider->setValue(0);
+    ui->contrastSlider->setValue(0);
+    ui->sbSlider->setValue(0);
+    ui->deNoiseSlider->setValue(0);
+    ui->gammaSlider->setValue(0);
+
+}
+/* panoramaForm의 3번 프리셋을 처리하는 슬롯 */
+void PanoramaForm::on_preset_Button3_clicked()
+{
+    int preset = 3;
+
+    /* preset button ui 초기화 */
+    ui->preset_Button1->setStyleSheet("");
+    ui->preset_Button2->setStyleSheet("");
+    ui->preset_Button4->setStyleSheet("");
+    ui->preset_Button5->setStyleSheet("");
+    ui->preset_Button6->setStyleSheet("");
+    ui->preset_Button3->setStyleSheet("background-color: rgb(35, 190, 212);"
+                                      "color: rgb(255, 255, 255);"
+                                      "border: 2px solid rgb(184,191,200);");
+    if(defaultPixmap.isNull())  return; //이미지가 load되지 않은 경우 예외 처리
+
+    emit sendPanoPreset(preset);        //프리셋 연산 클래스로 번호 전송
+
+    /* Image Send 후 value 초기화 */
+    ui->brightSlider->setValue(0);
+    ui->contrastSlider->setValue(0);
+    ui->sbSlider->setValue(0);
+    ui->deNoiseSlider->setValue(0);
+    ui->gammaSlider->setValue(0);
+}
+/* panoramaForm의 4번 프리셋을 처리하는 슬롯 */
+void PanoramaForm::on_preset_Button4_clicked()
+{
+    int preset = 4;
+    /* preset button ui 초기화 */
+    ui->preset_Button1->setStyleSheet("");
+    ui->preset_Button2->setStyleSheet("");
+    ui->preset_Button3->setStyleSheet("");
+    ui->preset_Button5->setStyleSheet("");
+    ui->preset_Button6->setStyleSheet("");
+    ui->preset_Button4->setStyleSheet("background-color: rgb(35, 190, 212);"
+                                      "color: rgb(255, 255, 255);"
+                                      "border: 2px solid rgb(184,191,200);");
+    if(defaultPixmap.isNull())  return; //이미지가 load되지 않은 경우 예외 처리
+
+    emit sendPanoPreset(preset);        //프리셋 연산 클래스로 번호 전송
+
+    /* Image Send 후 value 초기화 */
+    ui->brightSlider->setValue(0);
+    ui->contrastSlider->setValue(0);
+    ui->sbSlider->setValue(0);
+    ui->deNoiseSlider->setValue(0);
+    ui->gammaSlider->setValue(0);
+}
+/* panoramaForm의 5번 프리셋을 처리하는 슬롯*/
+void PanoramaForm::on_preset_Button5_clicked()
+{
+    int preset = 5;
+
+    /* preset button ui 초기화 */
+    ui->preset_Button1->setStyleSheet("");
+    ui->preset_Button2->setStyleSheet("");
+    ui->preset_Button3->setStyleSheet("");
+    ui->preset_Button4->setStyleSheet("");
+    ui->preset_Button6->setStyleSheet("");
+    ui->preset_Button5->setStyleSheet("background-color: rgb(35, 190, 212);"
+                                      "color: rgb(255, 255, 255);"
+                                      "border: 2px solid rgb(184,191,200);");
+    if(defaultPixmap.isNull())  return; //이미지가 load되지 않은 경우 예외 처리
+
+    emit sendPanoPreset(preset);        //프리셋 연산 클래스로 번호 전송
+
+    /* Image Send 후 value 초기화 */
+    ui->brightSlider->setValue(0);
+    ui->contrastSlider->setValue(0);
+    ui->sbSlider->setValue(0);
+    ui->deNoiseSlider->setValue(0);
+    ui->gammaSlider->setValue(0);
+}
+/* panoramaForm의 6번 프리셋을 처리하는 슬롯*/
+void PanoramaForm::on_preset_Button6_clicked()
+{
+    int preset = 6;
+    /* preset button ui 초기화 */
+    ui->preset_Button1->setStyleSheet("");
+    ui->preset_Button2->setStyleSheet("");
+    ui->preset_Button3->setStyleSheet("");
+    ui->preset_Button4->setStyleSheet("");
+    ui->preset_Button5->setStyleSheet("");
+    ui->preset_Button6->setStyleSheet("background-color: rgb(35, 190, 212);"
+                                      "color: rgb(255, 255, 255);"
+                                      "border: 2px solid rgb(184,191,200);");
+    if(defaultPixmap.isNull())  return; //이미지가 load되지 않은 경우 예외 처리
+
+    emit sendPanoPreset(preset);        //프리셋 연산 클래스로 번호 전송
+
+    /* Image Send 후 value 초기화 */
+    ui->brightSlider->setValue(0);
+    ui->contrastSlider->setValue(0);
+    ui->sbSlider->setValue(0);
+    ui->deNoiseSlider->setValue(0);
+    ui->gammaSlider->setValue(0);
+}
+/* panoramaForm reset 슬롯 */
+void PanoramaForm::on_resetButton_clicked()
+{
+    if(defaultImg.isNull()) return; //이미지가 load되지 않은 경우 예외 처리
+
+    /* ui 설정 */
+    ui->preset_Button1->setStyleSheet("");
+    ui->preset_Button2->setStyleSheet("");
+    ui->preset_Button3->setStyleSheet("");
+    ui->preset_Button4->setStyleSheet("");
+    ui->preset_Button5->setStyleSheet("");
+    ui->preset_Button6->setStyleSheet("");
+    ui->brightSlider->setValue(0);
+    ui->contrastSlider->setValue(0);
+    ui->sbSlider->setValue(0);
+    ui->deNoiseSlider->setValue(0);
+    ui->gammaSlider->setValue(0);
+
+    prevPixmap = QPixmap();     //프리셋 이미지 초기화
+
+    QPixmap pixmap;
+    pixmap = pixmap.fromImage(defaultImg.convertToFormat(QImage::Format_Grayscale8));
+
+    emit sendResetPano(pixmap); //reset 신호와 원본 이미지를 View로 전송, 시그널
+    emit sendSetReset();        //panorama 연산 클래스로 리셋 시그널 전송
+}
+/* 연산클래스에서의 영상 연산 결과를 반환하는 슬롯 */
 void PanoramaForm::receieveImg(QPixmap& pixmap)
 {
     prevPixmap = pixmap;
-    emit sendPanoView(pixmap);
+    emit sendPanoView(pixmap);  //View로 연산한 영상 전송, 시그널
 }
-
+/* 저장버튼 클릭 시, View로 시그널을 전송하는 슬롯 */
+void PanoramaForm::on_imageSaveButton_clicked()
+{
+    emit savePanoSignal();  //저장버튼 클릭 시그널
+}
+/* View에서 후처리한 panorama 영상을 저장하는 슬롯*/
 void PanoramaForm::panoImageSave(QImage& saveimg)
 {
     if(defaultImg.isNull()) {
@@ -515,42 +586,66 @@ void PanoramaForm::panoImageSave(QImage& saveimg)
         delete file;
     }
 }
-
+/* 평활화 버튼 클릭 시, 처리 슬롯 */
 void PanoramaForm::on_hePushButton_clicked()
 {
-    if(defaultPixmap.isNull()) return;
+    if(defaultPixmap.isNull()) return;  //이미지가 load되지 않은 경우 예외 처리
 
-    /* preset Img가 있으면 preset, 없으면 원본 Img */
+    /* 프리셋 이미지가 있으면 preset img, 없으면 원본 Img를
+     * 연산 클래스로 전송하는 시그널 */
     if(prevPixmap.isNull())  emit sendPanoPrev(defaultPixmap);
     else emit sendPanoPrev(prevPixmap);
 
+    /* ui 설정 */
     ui->brightSlider->setValue(0);
     ui->contrastSlider->setValue(0);
     ui->sbSlider->setValue(0);
     ui->deNoiseSlider->setValue(0);
+    ui->gammaSlider->setValue(0);
 }
-
-
+/* 종료 버튼 클릭 시, 처리 슬롯*/
+void PanoramaForm::on_exitButton_clicked(){
+    emit exitPanoSignal();   //main Form으로 종료 시그널 전송
+}
+/* 필터 버튼 클릭 시, 처리 슬롯*/
 void PanoramaForm::on_filterPushButton_clicked()
 {
+    /* filterButtonForm의 객체 생성 */
+    filterWidget = new FilterButtonForm;
+
+    /* filterButtonForm의 연산을 위한 시그널 슬롯 */
+    connect(filterWidget, SIGNAL(panoLowPassCutOff(int)),
+            this, SLOT(sendFourierSignal(int)));
+    connect(filterWidget, SIGNAL(panoHighPassCutOff(int)),
+            this, SLOT(send2FourierSignal(int)));
+    connect(filterWidget, SIGNAL(sendPanoMedian(int)),
+            this, SLOT(sendMedianSignal(int)));
+
     if (filterWidget->getTitle() == "Cephalo")
         filterWidget->exit();
 
     filterWidget->setTitle("Panorama");
+    filterWidget->panoReadSettings();
     filterWidget->show();
+
 }
-
-/******************** 시그널/ 슬롯 추가 **********************/
+/* filter 연산을 위해 panorama 연산 클래스로 시그널 전송하는 슬롯*/
 void PanoramaForm::sendFourierSignal(int cutoff) {
-
     emit sendCutOffValue(cutoff);
 }
-
 void PanoramaForm::send2FourierSignal(int cutoff) {
     emit send2CutOffValue(cutoff);
 }
-
 void PanoramaForm::sendMedianSignal(int value) {
-
     emit sendMedianValue(value);
 }
+/* 필터 연산 후, 초기화 슬롯 */
+void PanoramaForm::resetFilCalcValue(){
+    ui->brightSlider->setValue(0);
+    ui->contrastSlider->setValue(0);
+    ui->sbSlider->setValue(0);
+    ui->deNoiseSlider->setValue(0);
+    ui->gammaSlider->setValue(0);
+}
+
+

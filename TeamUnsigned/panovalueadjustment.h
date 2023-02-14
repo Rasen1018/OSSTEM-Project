@@ -10,16 +10,15 @@ class PanoValueAdjustment : public QObject
     Q_OBJECT
 public:
     explicit PanoValueAdjustment(QObject *parent = nullptr);
-    void insertion(ushort a[], int n);
 
 private:
-    QPixmap pixmap, sharpenPixmap;
+    QPixmap pixmap;
     QImage defaultImg, image, prevImg;
-    QImage currentImg;
+    QImage currentImg, calcImg;
 
-    //const uchar* inimg;
-    quint8* inimg;
-    quint8 *mask, *outimg, *sharpenImg, *copyImg;
+    unsigned char* inimg, *mask, *outimg;
+    unsigned char *gammaImg, *sharpenImg, *copyImg;
+    unsigned char *fftImg, *medianFilterImg;
 
     int width = 0, height = 0, imageSize = 0;
     int dentalViewWidth = 1000;
@@ -28,17 +27,14 @@ private:
 
     void set3x3MaskValue();
 
-    void highBoost(int);
-    void blur3x3(int);
-    void blur5x5();
-
-    void sharpen(int);// 세팔로 샤픈 임시 저장
-    void gaussian(float);
+    void highBoost(unsigned char*, int);
+    void gaussian(unsigned char*, float);
     void ADFilter(unsigned char* ,int);
 
 private slots:
+    void insertion(ushort a[], int n);
     void receiveFile(QPixmap&);  //defaultImg receive 수정 해야댈 듯
-    void changePanoValue(int, int, int, int);   //밝기, 대조, unsharp, deNoise
+    void changePanoValue(int, int, int, int, int);   //밝기, 대조, unsharp, deNoise, gamma
     void receivePrev(QPixmap&); //prevImg receive
     void receiveSetPresetImg(QPixmap&);
     void setResetImg();
@@ -48,6 +44,7 @@ private slots:
 
 signals:
     void panoImgSend(QPixmap&);
+    void exitFilterSignal();
 };
 
 #endif // PANOVALUEADJUSTMENT_H

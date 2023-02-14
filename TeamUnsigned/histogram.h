@@ -21,13 +21,13 @@ public:
 private:
     QImage image;
 
-    const quint8* inimg;
-    quint8 *mask, *outimg, *sharpenImg;
+    const uchar* inimg;
+
     int histo[256];
     int width = 0, height = 0, imageSize = 0;
     int min = 999, max = 0;
     int hstMin = 999, hstMax = 0;
-    quint8 gray;
+    unsigned char gray;
 
     void setHistoChart();
 private slots:

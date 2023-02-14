@@ -4,6 +4,7 @@
 #include <QLocale>
 #include <QTranslator>
 
+#include "xraydb.h"
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
@@ -17,7 +18,9 @@ int main(int argc, char *argv[])
             break;
         }
     }
-    MainWindow w;
-    w.show();
+
+    XrayDB d;
+    d.show();
+
     return a.exec();
 }
