@@ -4,9 +4,8 @@ Histogram::Histogram(QWidget *parent)
     : QWidget{parent}
 {
 }
-
+/* Histogram 분포를 그리는 함수 */
 void Histogram::setHistoChart(){
-
     QString legendName = "value range : " + QString::number(min) + " ~ " +QString::number(max);
 
     QBarSet *set0 = new QBarSet(legendName);
@@ -24,6 +23,7 @@ void Histogram::setHistoChart(){
     chart->setTitle("Image Histogram");
     chart->setAnimationOptions(QChart::AllAnimations);
 
+    /* x축 설정 : Histogram 분포의 min ~ max 의 범위 */
     QStringList xValue;
     for(int i = min; i < max +1; i ++){  //x축 value 설정
         xValue <<  QString::number(i);
@@ -34,12 +34,14 @@ void Histogram::setHistoChart(){
     chart->addAxis(axisX, Qt::AlignBottom);
     series->attachAxis(axisX);
 
+    /* y축 설정 :Histogram 분포의 count */
     QValueAxis *axisY = new QValueAxis();
     axisY->setLabelFormat("%.0f");
     axisY->setRange(hstMin, hstMax);
     chart->addAxis(axisY, Qt::AlignLeft);
     series->attachAxis(axisY);
 
+    /* BarChart의 범례 설정 */
     chart->legend()->setVisible(true);
     chart->legend()->setAlignment(Qt::AlignBottom);
 
@@ -57,8 +59,12 @@ void Histogram::setHistoChart(){
     chartView->resize(300,300);
 
 }
-void Histogram::receiveHisto(QPixmap& pixmap){
-
+/* Histogram 분포를 구하기 위한 슬롯
+ * @param Histogram 분포를 구할 영상 Pixmap
+ */
+void Histogram::receiveHisto(QPixmap& pixmap)
+{
+    QImage image;
     min = 999, max = 0;
     hstMin = 999, hstMax = 0;
 
@@ -76,8 +82,8 @@ void Histogram::receiveHisto(QPixmap& pixmap){
     }
 
     for (int i = 0; i < imageSize; i++) {   //histogram 분포
-        gray = inimg[i];
-        histo[gray] += 1;
+        value = inimg[i];
+        histo[value] += 1;
 
         if(min >= inimg[i]) min = inimg[i];
         if(max <= inimg[i]) max = inimg[i];

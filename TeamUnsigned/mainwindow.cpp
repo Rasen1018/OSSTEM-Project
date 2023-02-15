@@ -112,7 +112,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(cephaloForm, SIGNAL(sendSetReset()),
             cephValueAdjustment, SLOT(setResetImg()));
 
-    /* 필터 연산을 위한 SIGNAL / SLOT */
+    /* panorama 필터 연산을 위한 SIGNAL / SLOT */
     connect(panoramaForm, SIGNAL(sendCutOffValue(int)),
             panoValueAdjustment, SLOT(lowPassFFT(int)));
     connect(panoramaForm, SIGNAL(send2CutOffValue(int)),
@@ -120,6 +120,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(panoramaForm, SIGNAL(sendMedianValue(int)),
             panoValueAdjustment, SLOT(median(int)));
 
+    /* cephalo 필터 연산을 위한 SIGNAL / SLOT */
     connect(cephaloForm, SIGNAL(sendCutOffValue(int)),
             cephValueAdjustment, SLOT(lowPassFFT(int)));
     connect(cephaloForm, SIGNAL(send2CutoffValue(int)),

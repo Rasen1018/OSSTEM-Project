@@ -11,7 +11,9 @@
 #include <QtCharts/QBarCategoryAxis>
 #include <QtCharts/QValueAxis>
 
-
+/*
+ * Histogram 분포를 구하고, 그리는 클래스
+ */
 class Histogram : public QWidget
 {
     Q_OBJECT
@@ -19,20 +21,20 @@ public:
     explicit Histogram(QWidget *parent = nullptr);
 
 private:
-    QImage image;
+    void setHistoChart();           //Histogram 분포를 그리는 함수
 
-    const uchar* inimg;
+    const uchar* inimg;             //Histogram 분포를 구하기 위한 영상의 메모리
+    unsigned char value;
 
-    int histo[256];
+    int histo[256];                 //Histogram 분포 배열
     int width = 0, height = 0, imageSize = 0;
+
     int min = 999, max = 0;
     int hstMin = 999, hstMax = 0;
-    unsigned char gray;
 
-    void setHistoChart();
+
 private slots:
-    void receiveHisto(QPixmap&);
-signals:
+    void receiveHisto(QPixmap&);    //Histogram 분포를 구하기 위한 슬롯
 
 };
 

@@ -1,12 +1,12 @@
 #include "cephimageview.h"
 
-#include <QMimeData>
 #include <QFile>
 #include <QFileDialog>
 
 CephImageView::CephImageView(QWidget *parent)
     : QWidget{parent}
 {
+    /* ui 관련 선언 */
     m_layout.addWidget(&m_area, 0, 0, 1, 5);
     m_layout.addWidget(&m_zoomOut, 1, 0);
     m_layout.addWidget(&m_zoomIn, 1, 1);
@@ -20,16 +20,19 @@ CephImageView::CephImageView(QWidget *parent)
 
     updateStyleSheet();
 
+    /* zoomIn 버튼 클릭 시, 배율 증가 */
     connect(&m_zoomIn, &QPushButton::clicked, [this]{
         if(m_scaleLabel.text() !="")
             scaleImage(1.1);
     });
 
+    /* zoomOut 버튼 클릭 시, 배율 감소 */
     connect(&m_zoomOut, &QPushButton::clicked, [this]{
         if(m_scaleLabel.text() !="100.0%" && m_scaleLabel.text() !="")
             scaleImage(1.0/1.1);
     });
 
+    /* zoomReset 버튼 클릭 시, 배율 Reset */
     connect(&m_zoomReset, &QPushButton::clicked, [this]{
         if(m_scaleFactor != 1){
             m_imageLabel->resize(cephViewWidth,cephViewHeight);
@@ -38,53 +41,18 @@ CephImageView::CephImageView(QWidget *parent)
         }
     });
 
+    /* histo 버튼 클릭 시, 히스토그램 객체 생성 */
     connect(&m_histo, &QPushButton::clicked, [this]{
-        if(viewPixmap.isNull()) return;
+        if(viewPixmap.isNull()) return; //View에 이미지가 없는 경우 예외 처리
 
         histogram = new Histogram();
         connect(this, SIGNAL(sendHisto(QPixmap&)),
                 histogram, SLOT(receiveHisto(QPixmap&)));
-        emit sendHisto(viewPixmap);
+        emit sendHisto(viewPixmap);     // Histogram 클래스로 View의 이미지 전송
         delete histogram;
-
     });
-
 }
-
-void CephImageView::scaleImage(double factor)
-{
-    m_scaleFactor *= factor;
-    m_scaleLabel.setText(QStringLiteral("%1%").arg(m_scaleFactor*100, 0, 'f', 1));
-    QSize size = m_imageLabel->pixmap().size() * m_scaleFactor;
-    m_imageLabel->resize(size);
-}
-
-/* panoramaForm 에서 로드 버튼 클릭 시 or 연산 후,  뷰로 픽스맵 데이터 전송하는 함수. */
-void CephImageView::receiveLoadImg(QPixmap pixmap)
-{
-    viewPixmap = pixmap.scaled(cephViewWidth, cephViewHeight);
-        m_imageLabel->setPixmap(pixmap.scaled(cephViewWidth, cephViewHeight));
-        scaleImage(1.0);
-
-        prevImg = pixmap.scaled(cephWidth, cephHeight).toImage();
-
-        emit sendCephPrev(viewPixmap);
-
-}
-
-void CephImageView::receiveResetCeph(QPixmap& pixmap)
-{
-    m_imageLabel->setPixmap(pixmap.scaled(cephViewWidth, cephViewHeight));
-    scaleImage(1.0);
-
-    viewPixmap = pixmap.scaled(cephViewWidth, cephViewHeight);
-}
-
-void CephImageView::receiveSaveCeph()
-{
-    emit sendSave(prevImg);
-}
-
+/* StyleSheet 설정 함수 */
 void CephImageView::updateStyleSheet()
 {
     m_imageLabel->setStyleSheet("border: none;");
@@ -131,4 +99,40 @@ void CephImageView::updateStyleSheet()
                               "color: rgb(255, 255, 255);\n"
                               "}\n");
 }
+/* cephalo 이미지 배율에 맞게 Label크기를 조정하는 함수
+ * @param Label의 배율
+ */
+void CephImageView::scaleImage(double factor)
+{
+    m_scaleFactor *= factor;
+    m_scaleLabel.setText(QStringLiteral("%1%").arg(m_scaleFactor*100, 0, 'f', 1));
+    QSize size = m_imageLabel->pixmap().size() * m_scaleFactor;
+    m_imageLabel->resize(size);
+}
+
+/* cephaloForm 에서  View로 픽스맵 데이터 받아오는 슬롯 */
+void CephImageView::receiveLoadImg(QPixmap pixmap)
+{
+    viewPixmap = pixmap.scaled(cephViewWidth, cephViewHeight);
+    m_imageLabel->setPixmap(pixmap.scaled(cephViewWidth, cephViewHeight));
+    scaleImage(1.0);
+
+    prevImg = pixmap.scaled(cephWidth, cephHeight).toImage();
+
+    emit sendCephPrev(viewPixmap);  //히스토 연산을 위한 시그널
+}
+/* cephaloForm에서 리셋 신호 전송 시, View 리셋 슬롯 */
+void CephImageView::receiveResetCeph(QPixmap& pixmap)
+{
+    m_imageLabel->setPixmap(pixmap.scaled(cephViewWidth, cephViewHeight));
+    scaleImage(1.0);
+
+    viewPixmap = pixmap.scaled(cephViewWidth, cephViewHeight);
+}
+/* cephaloForm에서 저장 신호 전송 시, 현재 View의 Img 전송 슬롯 */
+void CephImageView::receiveSaveCeph()
+{
+    emit sendSave(prevImg);
+}
+
 

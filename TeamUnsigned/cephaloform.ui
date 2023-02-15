@@ -1156,7 +1156,7 @@ background-color: rgb(103, 104, 114);
               </spacer>
              </item>
              <item>
-              <widget class="QPushButton" name="sharpenButton">
+              <widget class="QPushButton" name="blurButton">
                <property name="minimumSize">
                 <size>
                  <width>20</width>
@@ -1241,7 +1241,7 @@ background-color: rgb(103, 104, 114);
               </widget>
              </item>
              <item>
-              <widget class="QPushButton" name="blurButton">
+              <widget class="QPushButton" name="sharpenButton">
                <property name="minimumSize">
                 <size>
                  <width>20</width>

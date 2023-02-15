@@ -6,33 +6,27 @@
 typedef unsigned char ubyte8;
 /*
  * *** fourier Logic *** *
- FourierProcessing(width, height, inimg);
- OnFFT2d();
- OnShuffle();
- OnFFT1d();
- lowPassGaussian(); ||  highFrequencyPass();
- OnFFT1d();
- OnShuffle();
- OnIFFT2d();
+ fourier.SetImage(img);
+ fourier.FFT(1);
+    if (dlg.m_nFilterShape == 0)
+        fourier.LowPassIdeal(dlg.m_nCutoff);
+    else
+        fourier.LowPassGaussian(dlg.m_nCutoff);
+ fourier.FFT(-1);
 */
 
 FourierProcessing::FourierProcessing(int width, int height, const uchar* inimg)
 {
-    // 이미지 크기를 2의 지수승으로 padding
     pow2width = 1024;
     pow2height = 1024;
-    // 원본 이미지 사이즈 저장
     scaledWidth = width, scaledHeight = height;
 
-    // 2의 지수승 사이즈 입력 이미지
     m_InputImage = (ubyte8*)malloc(sizeof(ubyte8) * pow2width * pow2height);
     memset(m_InputImage, 0, sizeof(ubyte8) * pow2width * pow2height);
 
-    // 2의 지수승 사이즈 출력 이미지
     m_OutputImage = (ubyte8*)malloc(sizeof(ubyte8) * pow2width * pow2height);
     memset(m_InputImage, 0, sizeof(ubyte8) * pow2width * pow2height);
 
-    // 0으로 원본에서 나머지 픽셀 데이터 padding
     for(int y = 0; y < scaledHeight; y++) {
         for(int x = 0; x < scaledWidth; x++) {
             m_InputImage[x + y * pow2width] = inimg[x + y * scaledWidth];
@@ -40,7 +34,6 @@ FourierProcessing::FourierProcessing(int width, int height, const uchar* inimg)
     }
 }
 
-/* 배열 메모리 정리 */
 void FourierProcessing::deleteMemory() {
 
     free(*m_FFT);
@@ -50,7 +43,6 @@ void FourierProcessing::deleteMemory() {
     free(m_OutputImage);
 }
 
-/* 2차원 푸리에 변환 */
 void FourierProcessing::OnFFT2d(ubyte8* outimg)
 {
     Q_UNUSED(outimg);
@@ -65,23 +57,21 @@ void FourierProcessing::OnFFT2d(ubyte8* outimg)
     Num = pow2width;
     Log2N = 0;
 
-    /* log2N 계산 */
     while(Num >= 2)
     {
-        Num >>= 1;  // 2보다 작아질 때까지 오른쪽으로 1칸씩 시프트 연산
+        Num >>= 1;
         Log2N++;
     }
 
-    // 임시 2차원 이미지 배열 생성 후 초기화
     m_tempImage = Image2DMem(pow2height, pow2width);
-
     Data = new Complex[pow2width];
+
     m_FFT = new Complex* [pow2height];
+    // 주파수 영역 변환 영상을 저장하기 위한 배열
     temp = new ubyte8* [pow2height];
 
-    /* 행 단위 푸리에 변환 */
     for(y = 0; y < pow2height; y++) {
-        m_FFT[y] = new Complex [pow2width];
+        m_FFT[y] = new Complex [pow2width];// m_FFT[i] = new Complex[width];
         temp[y] = new ubyte8[pow2width];
     }
 
@@ -92,10 +82,8 @@ void FourierProcessing::OnFFT2d(ubyte8* outimg)
             Data[x].im = 0.0;
         }
 
-        //1차원 푸리에 변환
         OnFFT1d(Data, pow2width, Log2N);
 
-        //로그 변환 후 푸리에 스펙트럼을 실수부, 허수부에 저장
         for (x = 0; x < pow2width; x++) {
             m_FFT[y][x].re = Data[x].re;
             m_FFT[y][x].im = Data[x].im;
@@ -105,7 +93,6 @@ void FourierProcessing::OnFFT2d(ubyte8* outimg)
     Num = pow2height;
     Log2N = 0;
 
-    /* log2N 계산 */
     while(Num >= 2) {
         Num >>= 1;
         Log2N++;
@@ -113,46 +100,36 @@ void FourierProcessing::OnFFT2d(ubyte8* outimg)
 
     Data = new Complex[pow2height];
 
-    /* 열단위 푸리에 변환 */
     for(x = 0; x<pow2width; x++) {
         for(y = 0; y<pow2height; y++) {
             Data[y].re = m_FFT[y][x].re;
             Data[y].im = m_FFT[y][x].im;
         }
 
-        //1차원 푸리에 변환
         OnFFT1d(Data, pow2height, Log2N);
 
-        //로그 변환후 푸리에 스펙트럼을 실수부, 허수부에 저장
         for (y = 0; y < pow2height; y++) {
             m_FFT[y][x].re = Data[y].re;
             m_FFT[y][x].im = Data[y].im;
         }
     }
 
-    /* 복소수 값의 절댓값을 로그 변환하여 저장.
-     * 푸리에 변환 결괏값을 0~255 사이의 값으로 변환 */
     for(y = 0; y < pow2height; y++) {
         for(x=0; x < pow2width; x++) {
-            // 푸리에 변환 함수 절대값(푸리에 스펙트럼)
             Value = sqrt((m_FFT[y][x].re * m_FFT[y][x].re) +
                          (m_FFT[y][x].im * m_FFT[y][x].im));
-            // 로그 변환
             Absol = 20 * log(Value);
 
-            //0~255 값만 들어오도록 경계 처리
             if(Absol > 255.0)
                 Absol = 255.0;
             if(Absol < 0.0)
                 Absol = 0.0;
 
-            //푸리에 스펙트럼을 영상으로 저장
             m_tempImage[y][x] = Absol;
         }
     }
 
-    /* 셔플링 과정 :
-     * 영상을 4등분하고 분할된 영상을 상하 대칭 및 좌우 대칭 */
+    // 셔플링 과정
     for(y =0; y < pow2height; y += pow2height / 2) {
         for(x =0; x < pow2width; x += pow2width / 2) {
             for (row = 0; row < pow2height / 2; row++) {
@@ -164,7 +141,6 @@ void FourierProcessing::OnFFT2d(ubyte8* outimg)
         }
     }
 
-    //푸리에 스펙트럼 영상 저장
     for(y=0; y < pow2height; y++) {
         for(x = 0; x < pow2width; x++) {
             m_OutputImage[y*pow2width + x] = temp[y][x];
@@ -248,7 +224,7 @@ void FourierProcessing::OnIFFT2d(ubyte8* outimg)
 
             if (0 <= x && x < scaledWidth) {
                 if (0 <= y && y < scaledHeight) {
-                    outimg[x + y*scaledWidth] = m_OutputImage[x + y * pow2width];
+                    outimg[x + y*scaledWidth] = m_OutputImage[(pow2width-x) + (pow2height-y) * pow2width];
                 }
             }
         }
@@ -257,16 +233,16 @@ void FourierProcessing::OnIFFT2d(ubyte8* outimg)
     delete[] Data;
 }
 
-/* 1차원 푸리에 변환(data, 너비 or 높이, log2N) */
+
 void FourierProcessing::OnFFT1d(Complex *X, int N, int Log2N)
 {
-    OnShuffle(X, N, Log2N);     // 입력 데이터 바꾸기
-    if (direction) OnButterfly(X, N, Log2N, 1);      // 버터플라이 알고리즘 수행(순방향)
-    else if (!direction) OnButterfly(X, N, Log2N, 2);       // 버터플라이 알고리즘 수행(역방향)
+    OnShuffle(X, N, Log2N);
+    if (direction) OnButterfly(X, N, Log2N, 1);
+    else if (!direction) OnButterfly(X, N, Log2N, 2);
 
 }
 
-/* 입력 데이터 순서를 바꾸기 위한 함수(data, 너비 or 높이, log2N) */
+
 void FourierProcessing::OnShuffle(Complex *X, int N, int Log2N)
 {
     int i;
@@ -288,7 +264,7 @@ void FourierProcessing::OnShuffle(Complex *X, int N, int Log2N)
 
 }
 
-/* 버터플라이 알고리즘 구현 함수(data, 너비 or 높이, log2N, 방향) */
+
 void FourierProcessing::OnButterfly(Complex *X, int N, int Log2N, int mode)
 {
     int i, j , k, m = 0;
@@ -303,14 +279,13 @@ void FourierProcessing::OnButterfly(Complex *X, int N, int Log2N, int mode)
     for(i=0; i <Log2N; i++) {
         Value = pow(2, i+1);
 
-        // 알고리즘 순방향
         if(mode == 1) {
             for(j=0; j < (int)(Value/2); j++) {
                 Y[j].re = cos(j*2.0*PI / Value);
-                Y[j].im = -sin(j*2.0*PI / Value);
+                Y[j].im = sin(j*2.0*PI / Value);
             }
         }
-        // 알고리즘 역방향
+
         if(mode == 2) {
             for(j=0; j < (int)(Value/2); j++) {
                 Y[j].re = cos(j*2.0*PI / Value);
@@ -338,7 +313,6 @@ void FourierProcessing::OnButterfly(Complex *X, int N, int Log2N, int mode)
             start = start + (int)Value;
         }
     }
-    // 푸리에 역변환
     if (mode == 2) {
         for(i = 0; i < N; i++) {
             X[i].re = X[i].re / N;
@@ -349,7 +323,7 @@ void FourierProcessing::OnButterfly(Complex *X, int N, int Log2N, int mode)
     delete[] Y;
 }
 
-/* 비트 반전 구현 함수 */
+
 int FourierProcessing::OnReverseBitOrder(int index, int Log2N)
 {
     int i, X, Y;
@@ -364,7 +338,7 @@ int FourierProcessing::OnReverseBitOrder(int index, int Log2N)
     return Y;
 }
 
-/* 임시 2차원 배열 초기화 함수 */
+
 double** FourierProcessing::Image2DMem(int height, int width) {
 
     double** temp;
@@ -387,40 +361,40 @@ double** FourierProcessing::Image2DMem(int height, int width) {
 void FourierProcessing::lowPassGaussian(ubyte8* outimg, int cutoff)
 {
 
-    int i, j, x = 0, y = 0;
+    int i, j, x, y;
     double dist2, hval;
 
     OnFFT2d(outimg);
 
-    for (i = 0; i < pow2height; i++) {
-        for (j = 0; j < pow2width; j++) {
-            y = i;
-            x = j;
-            if (y > pow2height / 2)
-                y = y - pow2height;
-            if (x > pow2width / 2)
-                x = x - pow2width;
+    for (i = 0; i < pow2height; i++)
+    for (j = 0; j < pow2width; j++)
+    {
+        y = i;
+        x = j;
+        if (y > pow2height / 2)
+            y = y - pow2height;
+        if (x > pow2width / 2)
+            x = x - pow2width;
 
-            dist2 = static_cast<double>(x*x + y*y);
+        dist2 = static_cast<double>(x*x + y*y);
 
-            hval = exp(-dist2 / (2 * cutoff * cutoff));
+        hval = exp(-dist2 / (2 * cutoff * cutoff));
 
-            m_FFT[i][j].re = m_FFT[i][j].re * hval;
-            m_FFT[i][j].im = m_FFT[i][j].im * hval;
-        }
+        m_FFT[i][j].re = m_FFT[i][j].re * hval;
+        m_FFT[i][j].im = m_FFT[i][j].im * hval;
     }
+
     OnIFFT2d(outimg);
 }
 
 
-void FourierProcessing::highFrequencyPass(ubyte8* outimg, double cutoff)
+void FourierProcessing::highFrequencyPass(ubyte8* outimg, double value)
 {
-    int i, j, x = 0, y = 0;
+    int i, j, x, y = 0;
     double temp, D, N;
-    D = cutoff;
+    D = value;
     N = 4.0;
 
-    double dist2, hval;
     OnFFT2d(outimg);
 
     for (i=0; i < pow2height; i++) {
@@ -432,17 +406,10 @@ void FourierProcessing::highFrequencyPass(ubyte8* outimg, double cutoff)
             if (x > pow2width / 2)
                 x = x - pow2width;
 
-//            temp = 1.0 / (1.0 + pow(D / sqrt((double)(x*x + y*y)), 2*N));
+            temp = 1.0 / (1.0 + pow(D / sqrt((double)(x*x + y*y)), 2*N));
 
-//            m_FFT[i][j].re = m_FFT[i][j].re * temp;
-//            m_FFT[i][j].im = m_FFT[i][j].im * temp;
-
-            dist2 = static_cast<double>(x*x + y*y);
-
-            hval = 1.0 - exp(-dist2 / (2 * cutoff * cutoff));
-
-            m_FFT[i][j].re = m_FFT[i][j].re * hval;
-            m_FFT[i][j].im = m_FFT[i][j].im * hval;
+            m_FFT[i][j].re = m_FFT[i][j].re * temp;
+            m_FFT[i][j].im = m_FFT[i][j].im * temp;
         }
     }    
     OnIFFT2d(outimg);
