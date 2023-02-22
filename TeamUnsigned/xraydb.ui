@@ -148,14 +148,14 @@ color: rgb(255, 255, 255);
                       </widget>
                      </item>
                      <item>
-                      <widget class="QLabel" name="label_2">
+                      <widget class="QLabel" name="FilmLabelT">
                        <property name="font">
                         <font>
                          <pointsize>11</pointsize>
                         </font>
                        </property>
                        <property name="text">
-                        <string>BirthDate</string>
+                        <string>FilmDate</string>
                        </property>
                        <property name="alignment">
                         <set>Qt::AlignCenter</set>
@@ -206,7 +206,7 @@ color: rgb(255, 255, 255);
                       </spacer>
                      </item>
                      <item>
-                      <widget class="QLineEdit" name="birthDateLineEdit">
+                      <widget class="QLineEdit" name="filmDateLineEdit">
                        <property name="minimumSize">
                         <size>
                          <width>180</width>

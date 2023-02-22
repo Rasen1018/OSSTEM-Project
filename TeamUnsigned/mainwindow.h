@@ -35,6 +35,8 @@ public:
 
 protected:
     void closeEvent(QCloseEvent *event) override;   // 메인 Form 종료를 알리는 closeEvent 재구현 함수
+private:
+    Ui::MainWindow *ui;
 
 signals:
     void loadPanoDB(QString);   //panorama DB load 시그널
@@ -47,7 +49,6 @@ private slots:
 
     void setReceiveMainWindow(QString, QString, QString);   // DB에서 load 시 type 에 맞는 Form load하는 슬롯.
 
-private:
-    Ui::MainWindow *ui;
+
 };
 #endif // MAINWINDOW_H

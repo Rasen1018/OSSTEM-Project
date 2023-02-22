@@ -43,10 +43,10 @@ private:
 
     void set3x3MaskValue();         //평균값 필터를 이용한 영상의 mask 값
 
+    unsigned char* unsharpMask(unsigned char*, int);        //언샤프 마스크 필터
     unsigned char* highBoost(unsigned char*, int);          //하이부스트 필터
     unsigned char* ADFilter(unsigned char* ,int);           //비등방성 확산 필터
-    unsigned char* lowPassFFT(unsigned char*, int cutoff);  //저역통과 필터
-
+    unsigned char* gaussian(unsigned char*, float);
 signals:
     void panoPresetSend(QPixmap&);  //panoramaForm으로 프리셋 영상 전송
     void panoPresetAdj(QPixmap&);   //panorama 연산 클래스로 프리셋 영상 전송

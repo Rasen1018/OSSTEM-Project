@@ -19,9 +19,16 @@ DentalImageView::DentalImageView()
 
     updateStyleSheet();
 
+    m_zoomIn.setAutoRepeat(true);
+    m_zoomIn.autoRepeat();
+    m_zoomIn.setAutoDefault(200);
+    m_zoomOut.setAutoRepeat(true);
+    m_zoomOut.autoRepeat();
+    m_zoomOut.setAutoDefault(200);
+
     /* zoomIn 버튼 클릭 시, 배율 증가 */
     connect(&m_zoomIn, &QPushButton::clicked, [this]{
-        if(m_scaleLabel.text() !="")
+        if(m_scaleLabel.text() !="194.9%" && m_scaleLabel.text() !="")
             scaleImage(1.1);
     });
 
@@ -51,6 +58,34 @@ DentalImageView::DentalImageView()
         delete histogram;
     });
 }
+void DentalImageView::mousePressEvent(QMouseEvent* event)
+{
+    if (event->button() == Qt::LeftButton)
+    {
+        lastDragPos = event->pos();
+    }
+}
+void DentalImageView::mouseMoveEvent(QMouseEvent* event)
+{
+    QPoint pos = this->mapFromParent(event->pos());
+
+    QPoint limit;
+    if(m_scaleLabel.text() == "110.0%") limit=QPoint(-112,-71);
+    else if(m_scaleLabel.text() == "121.0%") limit=QPoint(-222,-137);
+    else if(m_scaleLabel.text() == "133.1%") limit=QPoint(-344,-211);
+    else if(m_scaleLabel.text() == "146.4%") limit=QPoint(-477,-289);
+    else if(m_scaleLabel.text() == "161.1%") limit=QPoint(-624,-377);
+    else if(m_scaleLabel.text() == "177.2%") limit=QPoint(-785,-476);
+    else if(m_scaleLabel.text() == "194.9%") limit=QPoint(-962,-581);
+
+    if(m_scaleLabel.text() != "100.0%" && (pos-lastDragPos).x() <0 && (pos-lastDragPos).y() <0 &&
+            (pos-lastDragPos).x() > limit.x() && (pos-lastDragPos).y() > limit.y()) {
+        m_imageLabel->move(pos-lastDragPos);
+
+    }
+}
+
+
 /* StyleSheet 설정 함수 */
 void DentalImageView::updateStyleSheet()
 {

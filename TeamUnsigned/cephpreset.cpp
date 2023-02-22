@@ -30,7 +30,7 @@ void CephPreset::setPreset_1()
         *(blendImg + i) = LIMIT_UBYTE ( *(copyImg + i)*0.5 + *(copyImg2 + i)*0.5 );
         *(copyImg + i) = LIMIT_UBYTE( *(blendImg + i) - 12);
     }
-    memcpy(copyImg2, highBoost(copyImg, 2), sizeof(unsigned char) * imageSize);
+    memcpy(copyImg2, highBoost(copyImg, 1), sizeof(unsigned char) * imageSize);
 
     presetImg1 = QImage(copyImg2, width, height, QImage::Format_Grayscale8).copy();
 }
@@ -52,9 +52,13 @@ void CephPreset::setPreset_2()
         *(blendImg + i) = LIMIT_UBYTE ( *(copyImg + i)*0.5 + *(copyImg2 + i)*0.5 );
         *(copyImg + i) = LIMIT_UBYTE( *(blendImg + i) - 12);
     }
-    memcpy(copyImg2, highBoost(copyImg, 2), sizeof(unsigned char) * imageSize);
+    memcpy(copyImg2, highBoost(copyImg, 1), sizeof(unsigned char) * imageSize);
 
-    presetImg2 = QImage(copyImg2, width, height, QImage::Format_Grayscale8).copy();
+    for(int i = 0; i < imageSize; i ++){
+        *(outimg + i) = LIMIT_UBYTE( (avg + (*(copyImg2+i)-avg) * 1.15) );
+    }
+
+    presetImg2 = QImage(outimg, width, height, QImage::Format_Grayscale8).copy();
 }
 /* 3번 프리셋 연산
  * 프리셋 연산 결과를 PresetImg3에 저장
@@ -74,14 +78,17 @@ void CephPreset::setPreset_3()
     }
 
     memcpy(copyImg, lowPassFFT(copyImg2, 200), sizeof(unsigned char) * imageSize);
-    memcpy(copyImg2, highBoost(copyImg,4),sizeof(unsigned char) * imageSize);
+    memcpy(copyImg2, highBoost(copyImg,1),sizeof(unsigned char) * imageSize);
     memcpy(copyImg, ADFilter(copyImg2, 2), sizeof(unsigned char) * imageSize);
 
     for(int i = 0; i < imageSize; i ++){
         *(copyImg2 + i) = LIMIT_UBYTE( (avg + (*(copyImg+i)-avg) * 0.88));
         *(copyImg + i) =  LIMIT_UBYTE( qPow(*(copyImg2 + i) / 255.f , abs(1.f / 0.8 )) * 255 + 0.f   );
     }
-    memcpy(outimg, ADFilter(copyImg, 2), sizeof(unsigned char) * imageSize);
+    memcpy(copyImg2, ADFilter(copyImg, 2), sizeof(unsigned char) * imageSize);
+
+    memcpy(outimg, unsharpMask(copyImg2, 3), sizeof(unsigned char) * imageSize);
+
 
     presetImg3 = QImage(outimg, width, height, QImage::Format_Grayscale8).copy();
 }
@@ -103,8 +110,15 @@ void CephPreset::setPreset_4()
     }
 
     memcpy(copyImg, lowPassFFT(copyImg2, 200), sizeof(unsigned char) * imageSize);
-    memcpy(copyImg2, highBoost(copyImg,4),sizeof(unsigned char) * imageSize);
-    memcpy(outimg, ADFilter(copyImg2, 4), sizeof(unsigned char) * imageSize);
+    memcpy(copyImg2, highBoost(copyImg,1),sizeof(unsigned char) * imageSize);
+    memcpy(copyImg, ADFilter(copyImg2, 4), sizeof(unsigned char) * imageSize);
+
+    for(int i = 0; i < imageSize; i ++){
+        *(copyImg2 + i) = LIMIT_UBYTE( (avg + (*(copyImg+i)-avg) * 1.15) );
+    }
+
+    memcpy(outimg, unsharpMask(copyImg2, 3), sizeof(unsigned char) * imageSize);
+
 
     presetImg4 = QImage(outimg, width, height, QImage::Format_Grayscale8).copy();
 }
@@ -150,8 +164,9 @@ void CephPreset::setPreset_5()
         *(copyImg2 + i) = LIMIT_UBYTE( (avg + (*(copyImg+i)-avg) * 0.9) - 40 ); //밝기 및 대조 연산
         //*(copyImg + i) =  LIMIT_UBYTE( qPow(*(copyImg2 + i) / 255.f , abs(1.f / 1.1 )) * 255 + 0.f   );
     }
-    memcpy(copyImg, highBoost(copyImg2,4), sizeof(unsigned char)* imageSize);
-    memcpy(outimg, ADFilter(copyImg, 6), sizeof(unsigned char)*imageSize);
+    memcpy(copyImg, unsharpMask(copyImg2,4), sizeof(unsigned char)* imageSize);
+    memcpy(copyImg2, ADFilter(copyImg, 6), sizeof(unsigned char)*imageSize);
+    memcpy(outimg, lowPassFFT(copyImg2, 220), sizeof(unsigned char)*imageSize);
 
     presetImg5 = QImage(outimg, width, height, QImage::Format_Grayscale8).copy();
 }
@@ -196,13 +211,14 @@ void CephPreset::setPreset_6()
         copyImg[i] = LIMIT_UBYTE( sum_of_h[k] * constant ); //copyImg에 평탄화 한 value 저장.
         *(copyImg2 + i) = LIMIT_UBYTE( (avg + (*(copyImg+i)-avg) * 0.9) - 40 ); //밝기 및 대조 연산
     }
-    memcpy(copyImg, highBoost(copyImg2,4), sizeof(unsigned char)* imageSize);
+    memcpy(copyImg, unsharpMask(copyImg2,4), sizeof(unsigned char)* imageSize);
     memcpy(copyImg2, ADFilter(copyImg, 6), sizeof(unsigned char)*imageSize);
 
     for(int i =0; i < imageSize; i ++){
         *(copyImg + i) = LIMIT_UBYTE( (avg + (*(copyImg2+i)-avg) * 1.2) + 12 ); //밝기 및 대조 연산
         *(copyImg2 + i) =  LIMIT_UBYTE( qPow(*(copyImg + i) / 255.f , abs(1.f / 1.1 )) * 255 + 0.f   );
     }
+    memcpy(outimg, lowPassFFT(copyImg2, 220), sizeof(unsigned char)*imageSize);
 
     presetImg6 = QImage(copyImg2, width, height, QImage::Format_Grayscale8).copy();
 }
@@ -228,25 +244,25 @@ void CephPreset::set3x3MaskValue()
         if(widthCnt==0){
             //LeftUpVertex
             if(heightCnt==0){
-                arr[0] = arr[1] = arr[3] = arr[4] = blendImg[widthCnt+(heightCnt*width) ];
-                arr[2] = arr[5] = blendImg[widthCnt+1 + (heightCnt*width) ];
-                arr[6] = arr[7] = blendImg[widthCnt+ ((heightCnt+1)*width)  ];
-                arr[8] = blendImg[widthCnt+1+((heightCnt+1)*width) ];
+                arr[0] = arr[1] = arr[3] = arr[4] = inimg[widthCnt+(heightCnt*width) ];
+                arr[2] = arr[5] = inimg[widthCnt+1 + (heightCnt*width) ];
+                arr[6] = arr[7] = inimg[widthCnt+ ((heightCnt+1)*width)  ];
+                arr[8] = inimg[widthCnt+1+((heightCnt+1)*width) ];
             }
             //LeftDownVertex
             else if(heightCnt==height-1){
-                arr[0] = arr[1] =blendImg[widthCnt+((heightCnt-1)*width) ];
-                arr[2] = blendImg[widthCnt+1 + ((heightCnt-1)*width) ];
-                arr[3] = arr[6] = arr[7] = arr[4] = blendImg[widthCnt+(heightCnt*width)  ];
-                arr[8] = arr[5] = blendImg[widthCnt+1 + (heightCnt*width)  ];
+                arr[0] = arr[1] =inimg[widthCnt+((heightCnt-1)*width) ];
+                arr[2] = inimg[widthCnt+1 + ((heightCnt-1)*width) ];
+                arr[3] = arr[6] = arr[7] = arr[4] = inimg[widthCnt+(heightCnt*width)  ];
+                arr[8] = arr[5] = inimg[widthCnt+1 + (heightCnt*width)  ];
             }
             else{
-                arr[0] = arr[1] = blendImg[widthCnt+( (heightCnt-1)*width)  ];
-                arr[2] = blendImg[widthCnt+1+( (heightCnt-1)*width)  ];
-                arr[3] = arr[4] = blendImg[widthCnt+(heightCnt*width) ];
-                arr[5] = blendImg[widthCnt+1+(heightCnt*width) ];
-                arr[6] = arr[7] = blendImg[widthCnt+ ( (heightCnt+1)*width)  ];
-                arr[8] = blendImg[widthCnt+1+( (heightCnt+1)*width)  ];
+                arr[0] = arr[1] = inimg[widthCnt+( (heightCnt-1)*width)  ];
+                arr[2] = inimg[widthCnt+1+( (heightCnt-1)*width)  ];
+                arr[3] = arr[4] = inimg[widthCnt+(heightCnt*width) ];
+                arr[5] = inimg[widthCnt+1+(heightCnt*width) ];
+                arr[6] = arr[7] = inimg[widthCnt+ ( (heightCnt+1)*width)  ];
+                arr[8] = inimg[widthCnt+1+( (heightCnt+1)*width)  ];
             }
 
             cnt=0;
@@ -257,31 +273,31 @@ void CephPreset::set3x3MaskValue()
                 }
             }
             *(outimg + i) = LIMIT_UBYTE(sum);
-            *(mask + i) = LIMIT_UBYTE( *(blendImg + i) - *(outimg + i));
+            *(mask + i) = LIMIT_UBYTE( *(inimg + i) - *(outimg + i));
         }
 
         else if( widthCnt==(width*1 -1) ){
             //RightUpVertex
             if(heightCnt==0){
-                arr[0] = arr[3] = blendImg[widthCnt-1 + (heightCnt*width)  ];
-                arr[1] = arr[2] = arr[5] = arr[4] = blendImg[widthCnt + (heightCnt*width)  ];
-                arr[6] = blendImg[widthCnt-1 + ((heightCnt-1)*width)  ];
-                arr[7] = arr[8] = blendImg[widthCnt+((heightCnt+1)*width) ];
+                arr[0] = arr[3] = inimg[widthCnt-1 + (heightCnt*width)  ];
+                arr[1] = arr[2] = arr[5] = arr[4] = inimg[widthCnt + (heightCnt*width)  ];
+                arr[6] = inimg[widthCnt-1 + ((heightCnt-1)*width)  ];
+                arr[7] = arr[8] = inimg[widthCnt+((heightCnt+1)*width) ];
             }
             //RightDownVertex
             else if(heightCnt==height-1){
-                arr[0] = blendImg[widthCnt-1 + ((heightCnt-1)*width)  ];
-                arr[1] = arr[2] = blendImg[widthCnt-1 +((heightCnt-1)*width)  ];
-                arr[3] = arr[6] = blendImg[widthCnt-1+(heightCnt*width) ];
-                arr[4] = arr[5] = arr[7] = arr[8] = blendImg[widthCnt+(heightCnt*width) ];
+                arr[0] = inimg[widthCnt-1 + ((heightCnt-1)*width)  ];
+                arr[1] = arr[2] = inimg[widthCnt-1 +((heightCnt-1)*width)  ];
+                arr[3] = arr[6] = inimg[widthCnt-1+(heightCnt*width) ];
+                arr[4] = arr[5] = arr[7] = arr[8] = inimg[widthCnt+(heightCnt*width) ];
             }
             else{
-                arr[0] = blendImg[widthCnt-1 + ((heightCnt-1)*width)  ];
-                arr[2] = arr[1] = blendImg[widthCnt + ((heightCnt-1)*width)  ];
-                arr[3] = blendImg[widthCnt-1 + (heightCnt*width)  ];
-                arr[5] = arr[4] = blendImg[widthCnt+(heightCnt*width)  ];
-                arr[6] = blendImg[widthCnt-1 + ((heightCnt+1)*width)  ];
-                arr[8] = arr[7] = blendImg[widthCnt+((heightCnt+1)*width)  ];
+                arr[0] = inimg[widthCnt-1 + ((heightCnt-1)*width)  ];
+                arr[2] = arr[1] = inimg[widthCnt + ((heightCnt-1)*width)  ];
+                arr[3] = inimg[widthCnt-1 + (heightCnt*width)  ];
+                arr[5] = arr[4] = inimg[widthCnt+(heightCnt*width)  ];
+                arr[6] = inimg[widthCnt-1 + ((heightCnt+1)*width)  ];
+                arr[8] = arr[7] = inimg[widthCnt+((heightCnt+1)*width)  ];
             }
             cnt=0;
             float sum = 0.0;
@@ -291,16 +307,16 @@ void CephPreset::set3x3MaskValue()
                 }
             }
             *(outimg + i ) = LIMIT_UBYTE(sum);
-            *(mask + i) = LIMIT_UBYTE( *(blendImg + i) - *(outimg + i) );
+            *(mask + i) = LIMIT_UBYTE( *(inimg + i) - *(outimg + i) );
         }
         else if(heightCnt==0){
-            if( widthCnt!=1 && widthCnt!=width-1 ){
-                arr[0] = arr[3] = blendImg[widthCnt-1+(heightCnt*width)  ];
-                arr[1] = arr[4] = blendImg[widthCnt+(heightCnt*width) ];
-                arr[2] = arr[5] = blendImg[widthCnt+1+(heightCnt*width)  ];
-                arr[6] = blendImg[widthCnt-1+((heightCnt+1)*width)  ];
-                arr[7] = blendImg[widthCnt+((heightCnt+1)*width)  ];
-                arr[8] = blendImg[widthCnt+1 + ((heightCnt+1)*width)  ];
+            if( widthCnt!=0 && widthCnt!=width-1 ){
+                arr[0] = arr[3] = inimg[widthCnt-1+(heightCnt*width)  ];
+                arr[1] = arr[4] = inimg[widthCnt+(heightCnt*width) ];
+                arr[2] = arr[5] = inimg[widthCnt+1+(heightCnt*width)  ];
+                arr[6] = inimg[widthCnt-1+((heightCnt+1)*width)  ];
+                arr[7] = inimg[widthCnt+((heightCnt+1)*width)  ];
+                arr[8] = inimg[widthCnt+1 + ((heightCnt+1)*width)  ];
 
                 cnt=0;
                 float sum = 0.0;
@@ -310,17 +326,17 @@ void CephPreset::set3x3MaskValue()
                     }
                 }
                 *(outimg + i ) = LIMIT_UBYTE(sum);
-                *(mask + i) = LIMIT_UBYTE( *(blendImg + i) - *(outimg + i) );
+                *(mask + i) = LIMIT_UBYTE( *(inimg + i) - *(outimg + i) );
             }
         }
         else if( heightCnt ==(height -1) ){
-            if( widthCnt!=1 && widthCnt!=width-1 ){
-                arr[0] = blendImg[widthCnt-1+((heightCnt-1)*width) ];
-                arr[1] = blendImg[widthCnt+((heightCnt-1)*width) ];
-                arr[2] = blendImg[widthCnt+1+((heightCnt-1)*width) ];
-                arr[3] = arr[6] = blendImg[widthCnt-1+(heightCnt*width) ];
-                arr[4] = arr[7] = blendImg[widthCnt+(heightCnt*width) ];
-                arr[5] = arr[8] = blendImg[widthCnt+1+(heightCnt*width) ];
+            if( widthCnt!=0 && widthCnt!=width-1 ){
+                arr[0] = inimg[widthCnt-1+((heightCnt-1)*width) ];
+                arr[1] = inimg[widthCnt+((heightCnt-1)*width) ];
+                arr[2] = inimg[widthCnt+1+((heightCnt-1)*width) ];
+                arr[3] = arr[6] = inimg[widthCnt-1+(heightCnt*width) ];
+                arr[4] = arr[7] = inimg[widthCnt+(heightCnt*width) ];
+                arr[5] = arr[8] = inimg[widthCnt+1+(heightCnt*width) ];
                 cnt=0;
                 float sum = 0.0;
                 for(int i = -1; i < 2; i++) {
@@ -329,21 +345,39 @@ void CephPreset::set3x3MaskValue()
                     }
                 }
                 *(outimg + i ) = LIMIT_UBYTE(sum);
-                *(mask + i) =LIMIT_UBYTE( *(blendImg + i) - *(outimg + i) );
+                *(mask + i) =LIMIT_UBYTE( *(inimg + i) - *(outimg + i) );
             }
         }
         else{
             float sum = 0.0;
             for(int i = -1; i < 2; i++) {
                 for(int j = -1; j < 2; j++) {
-                    sum += kernel[i+1][j+1]*blendImg[((widthCnt+i*1)+(heightCnt+j)*width) ];
+                    sum += kernel[i+1][j+1]*inimg[((widthCnt+i*1)+(heightCnt+j)*width) ];
                 }
             }
             *(outimg + i) = LIMIT_UBYTE(sum);
-            *(mask + i) = LIMIT_UBYTE( *(blendImg + i) - *(outimg + i) );
+            *(mask + i) = LIMIT_UBYTE( *(inimg + i) - *(outimg + i) );
         }
     }
 }
+/* 언샤프 마스크 필터(선예도) 함수
+ * @param 연산할 이미지의 픽셀 데이터
+ * @param unsharp Value
+ * @return 언샤프 마스크 필터 연산 결과
+*/
+unsigned char* CephPreset::unsharpMask(unsigned char* in, int sbValue)
+{
+    memset(outimg, 0, sizeof(unsigned char) * imageSize);
+
+    int sharpen = sbValue * 2.5;
+
+    for (int i = 0; i < imageSize; i += 1) {
+        *(outimg + i) = LIMIT_UBYTE ( *(in + i) + sharpen * *(mask + i) );
+    }
+
+    return outimg;
+}
+
 /* 하이부스트 필터(선예도) 함수
  * @param 연산할 이미지의 픽셀 데이터
  * @param unsharp Value
@@ -353,10 +387,99 @@ unsigned char* CephPreset::highBoost(unsigned char* in, int sbValue)
 {
     memset(outimg, 0, sizeof(unsigned char) * imageSize);
 
-    int sharpen = sbValue * 2.5;
+    int arr[9];
+    int sum;
+    float alpha = sbValue*0.03;
+    int x = 0, y = -1;
+    for(int i = 0; i < imageSize; i ++){
+        x = i % width;
+        if(i % width == 0) y++;
 
-    for (int i = 0; i < imageSize; i += 1) {
-        *(outimg + i) = LIMIT_UBYTE ( *(in + i) + sharpen * *(mask + i) );    //highBoost = 원본이미지 + k * mask 값
+        if(x==0){
+            //LeftUpVertex
+            if(y==0){
+                arr[0] = arr[1] = arr[3] = arr[4] = in[x+(y*width) ];
+                arr[2] = arr[5] = in[x+1 + (y*width) ];
+                arr[6] = arr[7] = in[x+ ((y+1)*width)  ];
+                arr[8] = in[x+1+((y+1)*width) ];
+            }
+            //LeftDownVertex
+            else if(y==height-1){
+                arr[0] = arr[1] =in[x+((y-1)*width) ];
+                arr[2] = in[x+1 + ((y-1)*width) ];
+                arr[3] = arr[6] = arr[7] = arr[4] = in[x+(y*width)  ];
+                arr[8] = arr[5] = in[x+1 + (y*width)  ];
+            }
+            else{
+                arr[0] = arr[1] = in[x+( (y-1)*width)  ];
+                arr[2] = in[x+1+( (y-1)*width)  ];
+                arr[3] = arr[4] = in[x+(y*width) ];
+                arr[5] = in[x+1+(y*width) ];
+                arr[6] = arr[7] = in[x+ ( (y+1)*width)  ];
+                arr[8] = in[x+1+( (y+1)*width)  ];
+            }
+
+            sum = (5  + alpha) *arr[4] - arr[1] - arr[3] - arr[5] - arr[7];
+            *(outimg + i ) = LIMIT_UBYTE(sum);
+        }
+
+        else if( x==(width*1 -1) ){
+            //RightUpVertex
+            if(y==0){
+                arr[0] = arr[3] = in[x-1 + (y*width)  ];
+                arr[1] = arr[2] = arr[5] = arr[4] = in[x + (y*width)  ];
+                arr[6] = in[x-1 + ((y-1)*width)  ];
+                arr[7] = arr[8] = in[x+((y+1)*width) ];
+            }
+            //RightDownVertex
+            else if(y==height-1){
+                arr[0] = in[x-1 + ((y-1)*width)  ];
+                arr[1] = arr[2] = in[x-1 +((y-1)*width)  ];
+                arr[3] = arr[6] = in[x-1+(y*width) ];
+                arr[4] = arr[5] = arr[7] = arr[8] = in[x+(y*width) ];
+            }
+            else{
+                arr[0] = in[x-1 + ((y-1)*width)  ];
+                arr[2] = arr[1] = in[x + ((y-1)*width)  ];
+                arr[3] = in[x-1 + (y*width)  ];
+                arr[5] = arr[4] = in[x+(y*width)  ];
+                arr[6] = in[x-1 + ((y+1)*width)  ];
+                arr[8] = arr[7] = in[x+((y+1)*width)  ];
+            }
+            sum = (5  + alpha) *arr[4] - arr[1] - arr[3] - arr[5] - arr[7];
+            *(outimg + i ) = LIMIT_UBYTE(sum);
+        }
+        else if(y==0){
+            if( x!=0 && x!=width-1 ){
+                arr[0] = arr[3] = in[x-1+(y*width)  ];
+                arr[1] = arr[4] = in[x+(y*width) ];
+                arr[2] = arr[5] = in[x+1+(y*width)  ];
+                arr[6] = in[x-1+((y+1)*width)  ];
+                arr[7] = in[x+((y+1)*width)  ];
+                arr[8] = in[x+1 + ((y+1)*width)  ];
+
+                sum = (5  + alpha) *arr[4] - arr[1] - arr[3] - arr[5] - arr[7];
+                *(outimg + i ) = LIMIT_UBYTE(sum);
+            }
+        }
+        else if( y ==(height -1) ){
+            if( x!=0 && x!=width-1 ){
+                arr[0] = in[x-1+((y-1)*width) ];
+                arr[1] = in[x+((y-1)*width) ];
+                arr[2] = in[x+1+((y-1)*width) ];
+                arr[3] = arr[6] = in[x-1+(y*width) ];
+                arr[4] = arr[7] = in[x+(y*width) ];
+                arr[5] = arr[8] = in[x+1+(y*width) ];
+
+                sum = (5  + alpha) *arr[4] - arr[1] - arr[3] - arr[5] - arr[7];
+                *(outimg + i ) = LIMIT_UBYTE(sum);
+            }
+        }
+        else{
+            sum = (5  + alpha) *in[x+y*width] -
+                    in[(x-1)+y*width] - in[(x+1)+y*width] - in[x+(y+1)*width] - in[x+(y-1)*width];
+        outimg[x+y*width] = LIMIT_UBYTE(sum + 0.5f);
+        }
     }
 
     return outimg;
@@ -366,43 +489,153 @@ unsigned char* CephPreset::highBoost(unsigned char* in, int sbValue)
  * @param 반복 수
  * @return 비등방성 확산 필터 연산 결과
 */
-unsigned char* CephPreset::ADFilter(unsigned char* inimg ,int iter)
+unsigned char* CephPreset::ADFilter(unsigned char* in ,int iter)
 {
     memset(outimg, 0, sizeof(unsigned char) * imageSize);
 
+    unsigned char * copy;
+    copy = (unsigned char*)malloc(sizeof(unsigned char) * imageSize);
+    memcpy(copy, in, sizeof(unsigned char) * imageSize);
+
+    int i;
+    float gradn=0.0, grads=0.0, grade=0.0, gradw=0.0;
+    float gcn=0.0, gcs=0.0, gce=0.0, gcw=0.0;
     float lambda = 0.25;
     float k = 4;
-
-    auto copy(inimg);
-
-    /* iter 횟수만큼 비등방성 확산 알고리즘 수행 */
-    int i;
-    float gradn = 0.0, grads = 0.0, grade = 0.0, gradw = 0.0;
-    float gcn = 0.0, gcs = 0.0, gce = 0.0, gcw = 0.0;
     float k2 = k * k;
 
+    /* iter 횟수만큼 비등방성 확산 알고리즘 수행 */
     for (i = 0; i < iter; i++)
     {
-        int widthCnt = 0, heightCnt = -1;
-        for (int i = 0; i < imageSize; i += 1) {
-            widthCnt = i % width;
-            if(i % width == 0) heightCnt++;
+        int x = 0, y = -1;
+        for (int j = 0; j < imageSize; j += 1) {
+            x = j % width;
+            if(j % width == 0) y++;
 
-            gradn = copy[(heightCnt - 1) * width + widthCnt] - copy[heightCnt * width + widthCnt];
-            grads = copy[(heightCnt + 1) * width + widthCnt] - copy[heightCnt * width + widthCnt];
-            grade = copy[heightCnt * width + (widthCnt-1)] - copy[heightCnt * width + widthCnt];
-            gradw = copy[heightCnt * width + (widthCnt+1)] - copy[heightCnt * width + widthCnt];
+            if(y == 0) {
+                //(0,0)
+                if(x == 0) {
+                    grads = copy[(y + 1) * width + x] - copy[y * width + x];
+                    gradw = copy[y * width + (x+1)] - copy[y * width + x];
 
-            gcn = gradn / (1.0f + gradn * gradn / k2);
-            gcs = grads / (1.0f + grads * grads / k2);
-            gce = grade / (1.0f + grade * grade / k2);
-            gcw = gradw / (1.0f + gradw * gradw / k2);
+                    gcs = grads / (1.0f + grads * grads / k2);
+                    gcw = gradw / (1.0f + gradw * gradw / k2);
 
-            outimg[heightCnt * width + widthCnt] = copy[heightCnt * width + widthCnt] + lambda * (gcn + gcs + gce + gcw);
+                    outimg[y * width + x] = copy[y * width + x] + lambda * (gcs + gcw);
+                }
+                //(width,0)
+                else if(x == width -1) {
+                    grads = copy[(y + 1) * width + x] - copy[y * width + x];
+                    grade = copy[y * width + (x-1)] - copy[y * width + x];
+
+                    gcs = grads / (1.0f + grads * grads / k2);
+                    gce = grade / (1.0f + grade * grade / k2);
+
+                    outimg[y * width + x] = copy[y * width + x] + lambda * (gcs + gce);
+                }
+                //(x,0)
+                else {
+                    grads = copy[(y + 1) * width + x] - copy[y * width + x];
+                    grade = copy[y * width + (x-1)] - copy[y * width + x];
+                    gradw = copy[y * width + (x+1)] - copy[y * width + x];
+
+                    gcs = grads / (1.0f + grads * grads / k2);
+                    gce = grade / (1.0f + grade * grade / k2);
+                    gcw = gradw / (1.0f + gradw * gradw / k2);
+
+                    outimg[y * width + x] = copy[y * width + x]
+                            + lambda * (gcs + gce + gcw);
+                }
+            }
+
+            else if(y == height - 1) {
+                //(0, height)
+                if(x == 0) {
+                    gradn = copy[(y - 1) * width + x] - copy[y * width + x];
+                    gradw = copy[y * width + (x+1)] - copy[y * width + x];
+
+                    gcn = gradn / (1.0f + gradn * gradn / k2);
+                    gcw = gradw / (1.0f + gradw * gradw / k2);
+
+                    outimg[y * width + x] = copy[y * width + x] + lambda * (gcn + gcw);
+                }
+                //(width, height)
+                else if (x == width - 1) {
+                    gradn = copy[(y - 1) * width + x] - copy[y * width + x];
+                    grade = copy[y * width + (x-1)] - copy[y * width + x];
+
+                    gcn = gradn / (1.0f + gradn * gradn / k2);
+                    gce = grade / (1.0f + grade * grade / k2);
+
+                    outimg[y * width + x] = copy[y * width + x] + lambda * (gcn + gce);
+                }
+                //(x, height)
+                else {
+                    gradn = copy[(y - 1) * width + x] - copy[y * width + x];
+                    grade = copy[y * width + (x-1)] - copy[y * width + x];
+                    gradw = copy[y * width + (x+1)] - copy[y * width + x];
+
+                    gcn = gradn / (1.0f + gradn * gradn / k2);
+                    gce = grade / (1.0f + grade * grade / k2);
+                    gcw = gradw / (1.0f + gradw * gradw / k2);
+
+                    outimg[y * width + x] = copy[y * width + x]
+                            + lambda * (gcn + gce + gcw);
+                }
+            }
+
+            else if(x == 0) {
+                //(0, y)
+                if(0 < y && y < height - 1) {
+                    gradn = copy[(y - 1) * width + x] - copy[y * width + x];
+                    grads = copy[(y + 1) * width + x] - copy[y * width + x];
+                    gradw = copy[y * width + (x+1)] - copy[y * width + x];
+
+                    gcn = gradn / (1.0f + gradn * gradn / k2);
+                    gcs = grads / (1.0f + grads * grads / k2);
+                    gcw = gradw / (1.0f + gradw * gradw / k2);
+
+                    outimg[y * width + x] = copy[y * width + x]
+                            + lambda * (gcn + gcs + gcw);
+                }
+            }
+
+            else if(x == width - 1) {
+                //(width, y)
+                if(0 < y && y < height - 1) {
+                    gradn = copy[(y - 1) * width + x] - copy[y * width + x];
+                    grads = copy[(y + 1) * width + x] - copy[y * width + x];
+                    grade = copy[y * width + (x-1)] - copy[y * width + x];
+
+                    gcn = gradn / (1.0f + gradn * gradn / k2);
+                    gcs = grads / (1.0f + grads * grads / k2);
+                    gce = grade / (1.0f + grade * grade / k2);
+
+                    outimg[y * width + x] = copy[y * width + x]
+                            + lambda * (gcn + gcs + gce);
+                }
+            }
+
+            else {
+                //비등방성 확산 필터 수식(안쪽)
+                gradn = copy[(y - 1) * width + x] - copy[y * width + x];
+                grads = copy[(y + 1) * width + x] - copy[y * width + x];
+                grade = copy[y * width + (x-1)] - copy[y * width + x];
+                gradw = copy[y * width + (x+1)] - copy[y * width + x];
+
+                gcn = gradn / (1.0f + gradn * gradn / k2);
+                gcs = grads / (1.0f + grads * grads / k2);
+                gce = grade / (1.0f + grade * grade / k2);
+                gcw = gradw / (1.0f + gradw * gradw / k2);
+
+                outimg[y * width + x] = copy[y * width + x]
+                        + lambda * (gcn + gcs + gce + gcw);
+            }
         }
         if (i < iter - 1)
             std::memcpy((unsigned char*)copy, outimg, sizeof(unsigned char) * width * height);
     }
+    free(copy);
 
     return outimg;
 }

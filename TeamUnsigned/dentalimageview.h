@@ -20,6 +20,11 @@ class DentalImageView  : public QWidget
 
 public:
     DentalImageView();
+
+protected:
+    void mousePressEvent(QMouseEvent* event);
+    void mouseMoveEvent(QMouseEvent* event);
+
 private:
     void updateStyleSheet();                //StyleSheet 설정 함수
     void scaleImage(double);                //이미지 배율에 맞게 Label크기를 조정하는 함수
@@ -42,6 +47,7 @@ private:
     int panoWidth = 3000;           //panorama 원본영상의 가로
     int panoHeight = 1628;          //panorama 원본영상의 세로
 
+    QPoint lastDragPos;
 signals:
     void sendSave(QImage&);         //이미지 전송 시그널
     void sendHisto(QPixmap&);       //이미지 전송 시그널

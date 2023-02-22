@@ -34,8 +34,8 @@ private:
     void gaussian(unsigned char*, float);           //가우시안 필터 함수
     void ADFilter(unsigned char* ,int);             //비등방성 확산 필터 함수
 
-    void insertion(ushort a[], int n);              //정렬 함수
-
+    void quick_sort(int[], int, int);
+    int partition(int[], int, int);
 signals:
     void panoImgSend(QPixmap&);         //후처리 연산 영상 결과를 panoramaForm으로 시그널 전송
     void exitFilterSignal();            //필터 연산 후 panoramaForm으로 시그널 전송

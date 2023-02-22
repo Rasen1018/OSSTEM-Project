@@ -49,8 +49,7 @@ FORMS += \
     panoramaform.ui \
     xraydb.ui
 
-TRANSLATIONS += \
-    TeamUnsigned_ko_KR.ts
+
 CONFIG += lrelease
 CONFIG += embed_translations
 

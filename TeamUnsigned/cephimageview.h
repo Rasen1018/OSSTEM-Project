@@ -20,6 +20,11 @@ class CephImageView : public QWidget
 
 public:
     explicit CephImageView(QWidget *parent = nullptr);
+
+protected:
+    void mousePressEvent(QMouseEvent* event);
+    void mouseMoveEvent(QMouseEvent* event);
+
 private:
 
     void updateStyleSheet();                //StyleSheet 설정 함수
@@ -42,7 +47,7 @@ private:
 
     int cephWidth = 3000;           //cephalo 원본영상의 가로
     int cephHeight = 2400;          //cephalo 원본영상의 세로
-
+    QPoint lastDragPos;
 signals:
     void sendSave(QImage&);         //이미지 전송 시그널
     void sendHisto(QPixmap&);       //이미지 전송 시그널

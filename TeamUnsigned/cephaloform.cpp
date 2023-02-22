@@ -49,10 +49,11 @@ void CephaloForm::loadDB_Data(QString cephPath){
     if(cephPath == "")  return;
 
     QPixmap pixmap;
-
     QString extension = cephPath.split("/").last().split(".").last();
 
+
     if( extension == "raw"){
+
         file = new QFile(cephPath);
 
         file->open(QFile::ReadOnly);
@@ -88,6 +89,7 @@ void CephaloForm::loadDB_Data(QString cephPath){
         defaultPixmap =  defaultPixmap.fromImage(defaultImg.convertToFormat(QImage::Format_Grayscale8));
         ui->progressbarLabel->setText("Success Load Panorama Image !!!");
     }
+
     file->close();
     delete file;
 
@@ -112,7 +114,7 @@ void CephaloForm::loadDB_Data(QString cephPath){
 void CephaloForm::on_filePushButton_clicked()
 {
     QString filename = QFileDialog::getOpenFileName(this, "Open file",
-                                                    "C:\\Users\\KOSA\\OneDrive\\바탕 화면\\PostData");
+                                                    "C:\\");
 
     QPixmap pixmap;
 
@@ -175,6 +177,14 @@ void CephaloForm::on_filePushButton_clicked()
     /* prograssBar 설정 */
     for(int i = 0; i <=100; i++)
         ui->ceph_ProgressBar->setValue(i);
+
+    prevPixmap = QPixmap();     //프리셋 이미지 초기화
+
+    pixmap = pixmap.fromImage(defaultImg.convertToFormat(QImage::Format_Grayscale8));
+
+    emit sendResetCeph(pixmap); //reset 신호와 원본 이미지를 View로 전송, 시그널
+    emit sendSetReset();        //panorama 연산 클래스로 리셋 시그널 전송
+
 }
 /* cephaloForm ui의 밝기 값을 처리하는 슬롯
  * @param cephaloForm의 slider 밝기 값
@@ -630,11 +640,8 @@ void CephaloForm::on_filterPushButton_clicked()
     connect(filterWidget, SIGNAL(sendCephMedian(int)),
             this, SLOT(sendMedianSignal(int)));
 
-    if (filterWidget->getTitle() == "Panorama")
-        filterWidget->exit();
 
     filterWidget->setTitle("Cephalo");
-    filterWidget->cephReadSettings();
     filterWidget->show();
 }
 /* low-pass filter 연산을 위해 cephalo 연산 클래스로 시그널 전송하는 슬롯

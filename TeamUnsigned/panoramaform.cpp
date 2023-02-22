@@ -8,6 +8,7 @@
 #include <QBuffer>
 #include <QPainter>
 #include <QMessageBox>
+#include <QScreen>
 
 #include "filterbuttonform.h"
 
@@ -20,6 +21,7 @@ PanoramaForm::PanoramaForm(QWidget *parent) :
     ui->setupUi(this);
 
     dentalImageView = new DentalImageView;  //panoramaView 객체 생성
+
     dentalImageView->setFixedSize(1020, 655);
 
     ui->verticalLayout_7->insertWidget(2, dentalImageView);
@@ -52,7 +54,6 @@ void PanoramaForm::loadDB_Data(QString panoPath){
     if(panoPath == "")return;
 
     QPixmap pixmap;
-
     QString extension = panoPath.split("/").last().split(".").last();
 
     if( extension == "raw"){
@@ -72,7 +73,6 @@ void PanoramaForm::loadDB_Data(QString panoPath){
         image = *temp;
 
         pixmap = QPixmap::fromImage(image,Qt::AutoColor);
-
     }
     else if( extension != "raw"){
         pixmap.load(panoPath);
@@ -90,6 +90,7 @@ void PanoramaForm::loadDB_Data(QString panoPath){
         defaultImg = pixmap.toImage();
         defaultPixmap =  defaultPixmap.fromImage(defaultImg.convertToFormat(QImage::Format_Grayscale8));
         ui->progressbarLabel->setText("Success Load Panorama Image !!!");
+
     }
     file->close();
     delete file;
@@ -114,7 +115,7 @@ void PanoramaForm::loadDB_Data(QString panoPath){
 void PanoramaForm::on_filePushButton_clicked()
 {
     QString filename = QFileDialog::getOpenFileName(this, "Open file",
-                                                    "C:\\Users\\KOSA\\OneDrive\\바탕 화면\\PostData");
+                                                    "C:\\");
     QPixmap pixmap;
 
     if(filename.length()) {          // 파일이 존재한다면
@@ -135,7 +136,6 @@ void PanoramaForm::on_filePushButton_clicked()
             image = *temp;
 
             pixmap = QPixmap::fromImage(image,Qt::AutoColor);
-
         }
         else if( extension != "raw"){
             pixmap.load(file->fileName());
@@ -172,10 +172,18 @@ void PanoramaForm::on_filePushButton_clicked()
     ui->contrastSlider->setValue(0);
     ui->sbSlider->setValue(0);
     ui->deNoiseSlider->setValue(0);
+    ui->gammaSlider->setValue(0);
 
     /* prograssBar 설정 */
     for(int i = 0; i <= 100; i ++)
         ui->panoProgressBar->setValue(i);
+
+    prevPixmap = QPixmap();     //프리셋 이미지 초기화
+
+    pixmap = pixmap.fromImage(defaultImg.convertToFormat(QImage::Format_Grayscale8));
+
+    emit sendResetPano(pixmap); //reset 신호와 원본 이미지를 View로 전송, 시그널
+    emit sendSetReset();        //panorama 연산 클래스로 리셋 시그널 전송
 }
 /* panoramaForm ui의 밝기 값을 처리하는 슬롯
  * @param panoramaForm의 slider 밝기 값
@@ -633,11 +641,7 @@ void PanoramaForm::on_filterPushButton_clicked()
     connect(filterWidget, SIGNAL(sendPanoMedian(int)),
             this, SLOT(sendMedianSignal(int)));
 
-    if (filterWidget->getTitle() == "Cephalo")
-        filterWidget->exit();
-
     filterWidget->setTitle("Panorama");
-    filterWidget->panoReadSettings();
     filterWidget->show();
 
 }

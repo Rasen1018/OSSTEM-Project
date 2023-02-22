@@ -39,11 +39,11 @@ private:
     int panoImgLabelHeight = 287;
 
     /* 밝기, 대조, 선예도, 감마, deNoise 값 저장 변수 */
-    int brightValue;
-    int contrastValue;
-    int sbValue;
-    int deNoiseValue;
-    int gammaValue;
+    int brightValue=0;
+    int contrastValue=0;
+    int sbValue=0;
+    int deNoiseValue=0;
+    int gammaValue=0;
 
 private slots:
     void loadDB_Data(QString);          //type이 cephalo 인 DB load하는 슬롯

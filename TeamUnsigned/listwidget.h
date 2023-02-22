@@ -34,12 +34,14 @@ public:
                         QString directory, QString directory2, QString type,
                         QString gender, QString path,QWidget *parent = nullptr);
     ~ListWidget();
+    QFile* cephFile;                    //cephalo에 대한 파일 객체
+    QFile* panoFile;                    //panorama에 대한 파일 객체
 
     QString getName() ;              //환자의 이름 반환
     void setName(QString&);          //환자의 이름이 수정 되었다면 바뀐 값으로 set
 
-    QString getBirthdate();          //환자의 생일 반환
-    void setBirthdate(QString&);     //환자 정보가 수정 되었다면 바뀐 값으로 set
+    QString getFilmDate();          //환자의 찍은 날짜 반환
+    void setFilmdate(QString&);     //환자 정보가 수정 되었다면 바뀐 값으로 set
 
     QString getDirectory();          //Ceph의 path 반환
     void setDirectory(QString&);     //Ceph의 경로가 바뀌었다면 바뀐 값으로 set
@@ -58,6 +60,7 @@ public:
 
     int id();                        //id값을 반환
 
+
 signals:
     void setLoadMainWindow(QString, QString, QString);  // type, Ceph 경로, Path 경로를 보냄, type에 따라 초기화면 결정
 
@@ -72,8 +75,7 @@ private:
 
     MainWindow* unsignedViewer;         //Main Form 객체
 
-    QFile* cephFile;                    //cephalo에 대한 파일 객체
-    QFile* panoFile;                    //panorama에 대한 파일 객체
+
 };
 
 #endif // LISTWIDGET_H

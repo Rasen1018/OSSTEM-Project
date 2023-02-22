@@ -150,7 +150,7 @@ background: transparent;
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_3">
          <item>
-          <widget class="QLabel" name="birthDateLabelT">
+          <widget class="QLabel" name="filmDateLabelT">
            <property name="minimumSize">
             <size>
              <width>100</width>
@@ -169,7 +169,7 @@ background: transparent;
             </font>
            </property>
            <property name="text">
-            <string>BirthDate</string>
+            <string>Filming Date</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
@@ -177,14 +177,14 @@ background: transparent;
           </widget>
          </item>
          <item>
-          <widget class="QLabel" name="birthDateLabel">
+          <widget class="QLabel" name="filmDateLabel">
            <property name="font">
             <font>
              <pointsize>11</pointsize>
             </font>
            </property>
            <property name="text">
-            <string>1995.03.17</string>
+            <string>2022.03.17</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
